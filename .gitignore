@@ -1,0 +1,20 @@
+node_modules/
+dist/
+.DS_Store
+*.log
+
+# Local visual-analysis working sets. Final evidence remains in reference/qa/.
+/qa/
+reference/refinement/frame-*.png
+reference/refinement/contact-sheet.png
+reference/refinement/source-audio.wav
+
+# Keep only final visual evidence in the repository.
+reference/qa/*
+!reference/qa/comparison-full-postfix-v6.png
+!reference/qa/comparison-paper-bail-postfix-v6.png
+!reference/qa/live-original-eight-lines-wide-text-v6.png
+!reference/qa/live-original-final-blank-v6.png
+!reference/qa/live-original-mobile-final-v6.png
+!reference/qa/paper-box-desktop-final-v6.png
+!reference/qa/live-letter-blank-v6.png

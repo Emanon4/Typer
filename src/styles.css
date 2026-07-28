@@ -1,0 +1,935 @@
+@font-face {
+  font-family: "Special Elite";
+  src: url("/assets/SpecialElite-Regular.ttf") format("truetype");
+  font-display: swap;
+  font-style: normal;
+  font-weight: 400;
+}
+
+:root {
+  color-scheme: dark;
+  font-family: "Courier New", "Songti SC", "STSong", serif;
+  background: #120b07;
+  font-synthesis: none;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  width: 100%;
+  min-width: 320px;
+  min-height: 100%;
+  margin: 0;
+}
+
+body {
+  min-height: 100dvh;
+  overflow: hidden;
+  background: #120b07;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: geometricPrecision;
+}
+
+button,
+textarea {
+  font: inherit;
+}
+
+button {
+  -webkit-tap-highlight-color: transparent;
+}
+
+.app-shell {
+  position: relative;
+  display: grid;
+  min-height: 100dvh;
+  place-items: center;
+  overflow: hidden;
+  background: #120b07;
+}
+
+.typewriter-stage {
+  position: relative;
+  width: min(100vw, 150dvh);
+  max-width: 1536px;
+  aspect-ratio: 3 / 2;
+  overflow: hidden;
+  isolation: isolate;
+  background: #2c1a10;
+  box-shadow: 0 0 90px rgba(0, 0, 0, 0.62);
+  cursor: text;
+  user-select: none;
+}
+
+.machine-base,
+.machine-foreground,
+.typebar-strike,
+.return-lever-motion {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  pointer-events: none;
+}
+
+.machine-base {
+  z-index: 1;
+}
+
+.paper-sheet {
+  position: absolute;
+  left: 29%;
+  top: 34.2%;
+  z-index: 2;
+  width: 42%;
+  height: 89%;
+  container-type: inline-size;
+  overflow: hidden;
+  color: #241d17;
+  background: var(--paper-base, #f1e8d4);
+  border: 1px solid rgba(101, 76, 45, 0.32);
+  box-shadow:
+    0 1.4% 3% rgba(0, 0, 0, 0.34),
+    inset 0 0 18px rgba(106, 74, 35, 0.045);
+  transform-origin: 50% 100%;
+}
+
+.paper-grain {
+  position: absolute;
+  inset: 0;
+  background-color: var(--paper-base, #f1e8d4);
+  background-image: var(--paper-texture, url("/assets/reference-paper-stock.png"));
+  background-repeat: no-repeat;
+  background-position: var(--paper-position, center top);
+  background-size: var(--paper-size, cover);
+  opacity: 1;
+  pointer-events: none;
+}
+
+.live-paper {
+  transform: translate3d(var(--carriage-x), var(--paper-feed-y, 0), 0);
+  transition:
+    transform 76ms cubic-bezier(0.2, 0.8, 0.34, 1),
+    opacity 180ms ease;
+  will-change: transform;
+}
+
+.is-returning .live-paper {
+  transition-duration: 820ms;
+  transition-timing-function: cubic-bezier(0.18, 0.86, 0.28, 1.03);
+}
+
+.is-ejecting .live-paper {
+  opacity: 0.18;
+  transform: translate3d(0, -86%, 0) scale(1.045);
+  transition:
+    transform 720ms cubic-bezier(0.17, 0.72, 0.3, 1),
+    opacity 560ms ease 120ms;
+}
+
+.live-ink {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 4%;
+  z-index: 2;
+  width: 92%;
+  container-type: inline-size;
+}
+
+.live-glyph-row {
+  position: absolute;
+  left: 0;
+  width: 100%;
+  height: 5.2cqw;
+}
+
+.ink-glyph {
+  position: absolute;
+  top: 0;
+  display: block;
+  width: 3.42cqw;
+  height: 3.35cqw;
+  transform: translateY(var(--ink-lift)) rotate(var(--ink-rotate));
+  transform-origin: 25% 60%;
+  animation: ink-land 82ms steps(2, end) both;
+  pointer-events: none;
+}
+
+.ink-canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  mix-blend-mode: multiply;
+  filter:
+    drop-shadow(0.22px 0.32px rgba(255, 250, 232, 0.35))
+    drop-shadow(-0.12px -0.12px rgba(94, 70, 44, 0.16));
+}
+
+.ink-accessible {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.composition-preview {
+  position: absolute;
+  z-index: 4;
+  max-width: 68%;
+  overflow: hidden;
+  color: rgba(72, 52, 31, 0.76);
+  font-family: "Songti SC", "STSong", serif;
+  font-size: 3.09cqw;
+  line-height: 1.1;
+  text-decoration: underline;
+  text-decoration-color: rgba(98, 70, 39, 0.62);
+  text-decoration-style: dotted;
+  text-underline-offset: 0.2em;
+  white-space: nowrap;
+}
+
+.machine-foreground {
+  z-index: 3;
+  clip-path: polygon(0 47.2%, 100% 47.2%, 100% 100%, 0 100%);
+}
+
+.paper-bail {
+  position: absolute;
+  top: 43.65%;
+  left: 25.5%;
+  z-index: 4;
+  display: block;
+  width: 49%;
+  height: auto;
+  pointer-events: none;
+  transform: translate3d(var(--bail-x), 0, 0);
+  transition: transform 76ms cubic-bezier(0.2, 0.8, 0.34, 1);
+  will-change: transform;
+}
+
+.is-returning .paper-bail {
+  transition-duration: 820ms;
+  transition-timing-function: cubic-bezier(0.18, 0.86, 0.28, 1.03);
+}
+
+.typebar-strike {
+  z-index: 5;
+  filter: brightness(1.38) contrast(1.12);
+  transform-origin: 50% 68.8%;
+  animation: typebar-hit 118ms cubic-bezier(0.17, 0.84, 0.28, 1) both;
+}
+
+.return-lever-motion {
+  z-index: 6;
+  opacity: 0;
+  clip-path: polygon(17.5% 42%, 34.5% 42%, 34.5% 60%, 17.5% 60%);
+  transform-origin: 30% 49%;
+}
+
+.is-returning .return-lever-motion {
+  opacity: 1;
+  animation: lever-return 820ms cubic-bezier(0.23, 0.85, 0.28, 1) both;
+}
+
+.is-hit .machine-base,
+.is-hit .machine-foreground {
+  animation: machine-thrum 82ms steps(2, end) both;
+}
+
+.key-labels {
+  position: absolute;
+  inset: 0;
+  z-index: 7;
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  pointer-events: none;
+}
+
+.key-hotspots {
+  position: absolute;
+  inset: 0;
+  z-index: 8;
+  pointer-events: none;
+}
+
+.key-hotspot {
+  position: absolute;
+  width: 2.9%;
+  aspect-ratio: 1.12 / 1;
+  border-radius: 50%;
+  opacity: 0;
+  background: rgba(13, 8, 5, 0.76);
+  box-shadow:
+    inset 0 5px 7px rgba(0, 0, 0, 0.82),
+    0 0 9px rgba(205, 165, 87, 0.48);
+  transform: translate(-50%, -50%) scale(0.9);
+  transition: opacity 26ms linear;
+}
+
+.key-hotspot.active {
+  opacity: 0.88;
+  animation: key-press 90ms cubic-bezier(0.22, 0.8, 0.32, 1) both;
+}
+
+.space-hotspot {
+  position: absolute;
+  left: 34.5%;
+  top: 85.45%;
+  width: 31%;
+  height: 2.5%;
+  border-radius: 999px;
+  opacity: 0;
+  background: rgba(10, 7, 5, 0.72);
+  box-shadow:
+    inset 0 6px 7px rgba(0, 0, 0, 0.82),
+    0 0 9px rgba(205, 165, 87, 0.35);
+}
+
+.space-hotspot.active {
+  opacity: 0.86;
+  animation: space-press 92ms ease both;
+}
+
+.ime-input {
+  position: absolute;
+  left: 49.6%;
+  top: 49%;
+  z-index: 9;
+  width: 2px;
+  height: 2px;
+  min-width: 0;
+  min-height: 0;
+  padding: 0;
+  overflow: hidden;
+  color: transparent;
+  caret-color: transparent;
+  background: transparent;
+  border: 0;
+  opacity: 0.01;
+  outline: none;
+  resize: none;
+}
+
+.brand-lockup {
+  position: absolute;
+  top: 2.3%;
+  left: 2.35%;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  gap: 0.48em;
+  color: rgba(234, 215, 176, 0.8);
+  pointer-events: none;
+}
+
+.brand-name {
+  font-family: "Songti SC", "STSong", serif;
+  font-size: clamp(11px, 1.02vw, 16px);
+  font-weight: 600;
+  letter-spacing: 0.3em;
+}
+
+.machine-number {
+  color: rgba(210, 185, 139, 0.55);
+  font-family: "Courier New", monospace;
+  font-size: clamp(7px, 0.58vw, 9px);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.stage-actions {
+  position: absolute;
+  top: 2.05%;
+  right: 2.2%;
+  z-index: 11;
+  display: flex;
+  gap: 0.7vw;
+}
+
+.brass-button,
+.fresh-sheet-button {
+  min-height: 34px;
+  color: #2b1b0d;
+  font-family: "Songti SC", "STSong", serif;
+  font-size: clamp(10px, 0.74vw, 12px);
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  background: #b99552;
+  border: 1px solid rgba(234, 203, 134, 0.74);
+  border-radius: 999px;
+  box-shadow:
+    0 3px 8px rgba(0, 0, 0, 0.36),
+    inset 0 1px rgba(255, 238, 188, 0.52),
+    inset 0 -2px rgba(67, 38, 12, 0.32);
+  cursor: pointer;
+  transition:
+    transform 120ms ease,
+    filter 120ms ease;
+}
+
+.brass-button {
+  padding: 0 1.35em;
+}
+
+.brass-button:hover,
+.fresh-sheet-button:hover {
+  filter: brightness(1.1);
+  transform: translateY(-1px);
+}
+
+.brass-button:disabled,
+.fresh-sheet-button:disabled {
+  filter: saturate(0.45) brightness(0.72);
+  cursor: not-allowed;
+  opacity: 0.72;
+  transform: none;
+}
+
+.brass-button:active,
+.fresh-sheet-button:active {
+  filter: brightness(0.96);
+  transform: translateY(1px);
+}
+
+.brass-button:focus-visible,
+.fresh-sheet-button:focus-visible {
+  outline: 2px solid #f5dfaa;
+  outline-offset: 3px;
+}
+
+.writer-status {
+  position: absolute;
+  right: 2.35%;
+  bottom: 5.15%;
+  z-index: 10;
+  color: rgba(228, 208, 169, 0.5);
+  font-family: "Songti SC", "STSong", serif;
+  font-size: clamp(8px, 0.67vw, 11px);
+  letter-spacing: 0.12em;
+  pointer-events: none;
+  transition: color 160ms ease;
+}
+
+.writer-status.focused {
+  color: rgba(238, 218, 177, 0.83);
+}
+
+.status-lamp {
+  display: inline-block;
+  width: 0.55em;
+  height: 0.55em;
+  margin-right: 0.65em;
+  background: #c5a05a;
+  border-radius: 50%;
+  box-shadow: 0 0 8px rgba(201, 161, 88, 0.64);
+  vertical-align: 0.08em;
+}
+
+.instruction-line {
+  position: absolute;
+  bottom: 1.32%;
+  left: 50%;
+  z-index: 10;
+  margin: 0;
+  color: rgba(230, 211, 176, 0.58);
+  font-size: clamp(8px, 0.7vw, 11px);
+  letter-spacing: 0.09em;
+  pointer-events: none;
+  transform: translateX(-50%);
+  white-space: nowrap;
+}
+
+.page-review {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: grid;
+  place-items: center;
+}
+
+.review-scrim {
+  position: absolute;
+  inset: 0;
+  background: rgba(13, 8, 5, 0.7);
+  backdrop-filter: blur(8px) saturate(0.7);
+  animation: scrim-in 240ms ease both;
+}
+
+.review-content {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  height: min(88dvh, 900px);
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1.6vh;
+  animation: page-rise 520ms cubic-bezier(0.18, 0.82, 0.28, 1) both;
+}
+
+.review-kicker {
+  margin: 0;
+  color: rgba(235, 215, 176, 0.78);
+  font-size: clamp(9px, 0.72vw, 12px);
+  letter-spacing: 0.34em;
+}
+
+.final-sheet {
+  position: relative;
+  width: auto;
+  min-width: 0;
+  height: min(82dvh, 780px);
+  aspect-ratio: 0.693 / 1;
+  overflow: hidden;
+  color: #241d17;
+  background: var(--paper-base, #f1e8d4);
+  border: 1px solid rgba(112, 83, 48, 0.4);
+  box-shadow:
+    0 24px 80px rgba(0, 0, 0, 0.58),
+    inset 0 0 38px rgba(106, 74, 35, 0.08);
+  transform: rotate(-0.18deg);
+}
+
+.final-copy {
+  position: absolute;
+  inset: 8.5% 9.5%;
+  z-index: 2;
+  container-type: inline-size;
+}
+
+.final-line {
+  position: relative;
+  width: 100%;
+  height: 7.3%;
+  min-height: 2.1em;
+}
+
+.final-ink {
+  width: 5.2cqw;
+  height: 5.1cqw;
+  animation: none;
+}
+
+.fresh-sheet-button {
+  min-width: 176px;
+  padding: 0.8em 1.8em;
+}
+
+.review-actions {
+  display: flex;
+  gap: 12px;
+}
+
+.paper-box-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 46;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+}
+
+.paper-box-scrim {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  background: rgba(12, 7, 4, 0.76);
+  border: 0;
+  backdrop-filter: blur(9px) saturate(0.72);
+  cursor: pointer;
+  animation: scrim-in 220ms ease both;
+}
+
+.paper-box-drawer {
+  position: relative;
+  z-index: 2;
+  width: min(1080px, 94vw);
+  max-height: min(88dvh, 760px);
+  padding: clamp(20px, 2.4vw, 34px);
+  overflow: hidden;
+  color: #ead8b7;
+  background: #2a1a10;
+  border: 1px solid rgba(188, 148, 81, 0.56);
+  border-radius: 10px;
+  box-shadow:
+    0 30px 100px rgba(0, 0, 0, 0.68),
+    inset 0 0 0 5px rgba(66, 39, 21, 0.84),
+    inset 0 0 0 6px rgba(201, 159, 87, 0.22);
+  animation: drawer-open 360ms cubic-bezier(0.2, 0.82, 0.28, 1) both;
+}
+
+.paper-box-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 24px;
+}
+
+.paper-box-kicker {
+  margin: 0 0 7px;
+  color: rgba(202, 163, 96, 0.74);
+  font-family: "Courier New", monospace;
+  font-size: 10px;
+  letter-spacing: 0.2em;
+}
+
+.paper-box-header h2 {
+  margin: 0;
+  font-family: "Songti SC", "STSong", serif;
+  font-size: clamp(24px, 3vw, 42px);
+  font-weight: 500;
+  letter-spacing: 0.22em;
+}
+
+.paper-box-close {
+  min-width: 70px;
+  min-height: 36px;
+  color: rgba(236, 215, 176, 0.84);
+  background: #3a2416;
+  border: 1px solid rgba(185, 149, 82, 0.62);
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.paper-box-close:focus-visible,
+.paper-option:focus-visible,
+.paper-box-scrim:focus-visible {
+  outline: 2px solid #f5dfaa;
+  outline-offset: 3px;
+}
+
+.paper-box-intro {
+  max-width: 720px;
+  margin: 12px 0 20px;
+  color: rgba(229, 209, 174, 0.67);
+  font-size: 12px;
+  line-height: 1.8;
+  letter-spacing: 0.08em;
+}
+
+.paper-options {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 13px;
+  overflow: auto;
+  overscroll-behavior: contain;
+  scrollbar-color: rgba(185, 149, 82, 0.58) transparent;
+}
+
+.paper-option {
+  min-width: 0;
+  padding: 10px;
+  color: rgba(235, 216, 181, 0.82);
+  text-align: left;
+  background: #21140d;
+  border: 1px solid rgba(169, 127, 67, 0.34);
+  border-radius: 6px;
+  cursor: pointer;
+  transition:
+    border-color 140ms ease,
+    transform 140ms ease,
+    background-color 140ms ease;
+}
+
+.paper-option:hover {
+  border-color: rgba(215, 176, 105, 0.72);
+  transform: translateY(-2px);
+}
+
+.paper-option.selected {
+  background: #352116;
+  border-color: rgba(238, 198, 121, 0.9);
+  box-shadow: 0 0 0 2px rgba(185, 145, 76, 0.18);
+}
+
+.paper-option-preview {
+  position: relative;
+  display: block;
+  width: 100%;
+  aspect-ratio: 0.72 / 1;
+  margin-bottom: 11px;
+  overflow: hidden;
+  background: #e9dfc7;
+  border: 1px solid rgba(74, 48, 25, 0.28);
+  box-shadow: 0 7px 16px rgba(0, 0, 0, 0.36);
+}
+
+.paper-option-preview img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.paper-option-name,
+.paper-option-era,
+.paper-option-description {
+  display: block;
+}
+
+.paper-option-name {
+  margin-bottom: 4px;
+  color: #ecd8ad;
+  font-family: "Songti SC", "STSong", serif;
+  font-size: 15px;
+  letter-spacing: 0.13em;
+}
+
+.paper-option-era {
+  margin-bottom: 8px;
+  color: rgba(204, 164, 97, 0.72);
+  font-size: 9px;
+  letter-spacing: 0.09em;
+}
+
+.paper-option-description {
+  color: rgba(223, 203, 168, 0.56);
+  font-size: 10px;
+  line-height: 1.55;
+}
+
+.paper-box-footer {
+  margin-top: 17px;
+  color: rgba(226, 202, 159, 0.76);
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-align: right;
+}
+
+.fresh-sheet-button.secondary {
+  color: rgba(236, 215, 174, 0.9);
+  background: rgba(48, 31, 19, 0.9);
+  border-color: rgba(185, 149, 82, 0.68);
+  box-shadow:
+    0 3px 8px rgba(0, 0, 0, 0.36),
+    inset 0 1px rgba(255, 238, 188, 0.16);
+}
+
+.mobile-note {
+  display: none;
+}
+
+@keyframes ink-land {
+  0% {
+    filter: blur(0.45px);
+    opacity: 0;
+    transform: translateY(calc(var(--ink-lift) - 1px)) rotate(var(--ink-rotate));
+  }
+  100% {
+    filter: blur(0);
+    opacity: 1;
+    transform: translateY(var(--ink-lift)) rotate(var(--ink-rotate));
+  }
+}
+
+@keyframes typebar-hit {
+  0% {
+    opacity: 0.4;
+    transform: scaleY(1);
+  }
+  42% {
+    opacity: 1;
+    transform: translateY(-1.2%) scaleY(1.12);
+  }
+  100% {
+    opacity: 0;
+    transform: scaleY(1);
+  }
+}
+
+@keyframes machine-thrum {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(0.16%);
+  }
+}
+
+@keyframes key-press {
+  0%,
+  100% {
+    transform: translate(-50%, -50%) scale(0.94);
+  }
+  48% {
+    transform: translate(-50%, -43%) scale(0.84);
+  }
+}
+
+@keyframes space-press {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  48% {
+    transform: translateY(4px) scaleX(0.99);
+  }
+}
+
+@keyframes lever-return {
+  0% {
+    transform: rotate(0);
+  }
+  50% {
+    transform: rotate(-8deg) translateX(-0.6%);
+  }
+  100% {
+    transform: rotate(0);
+  }
+}
+
+@keyframes scrim-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes page-rise {
+  from {
+    opacity: 0;
+    transform: translateY(9vh) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes drawer-open {
+  from {
+    opacity: 0;
+    transform: translateY(24px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@media (max-aspect-ratio: 3 / 2) {
+  .typewriter-stage {
+    width: 100vw;
+    max-width: none;
+  }
+}
+
+@media (max-width: 720px) {
+  .app-shell {
+    align-items: start;
+    padding-top: 20dvh;
+  }
+
+  .typewriter-stage {
+    width: 100vw;
+    flex: none;
+    left: auto;
+    transform: none;
+  }
+
+  .brand-lockup {
+    left: 7%;
+  }
+
+  .stage-actions {
+    right: 3.5%;
+    gap: 4px;
+  }
+
+  .writer-status,
+  .instruction-line {
+    display: none;
+  }
+
+  .brass-button {
+    min-height: 29px;
+    padding-inline: 0.72em;
+    font-size: 7px;
+  }
+
+  .paper-box-overlay {
+    padding: 14px;
+  }
+
+  .paper-box-drawer {
+    width: 100%;
+    max-height: 76dvh;
+    padding: 20px 16px 16px;
+    overflow: hidden;
+  }
+
+  .paper-box-header h2 {
+    font-size: 26px;
+  }
+
+  .paper-box-intro {
+    margin-bottom: 14px;
+    font-size: 10px;
+  }
+
+  .paper-options {
+    grid-template-columns: repeat(5, 138px);
+    padding-bottom: 9px;
+  }
+
+  .paper-option-description {
+    display: none;
+  }
+
+  .paper-option-preview {
+    margin-bottom: 8px;
+  }
+
+  .paper-box-footer {
+    margin-top: 10px;
+  }
+
+  .mobile-note {
+    position: fixed;
+    right: 20px;
+    bottom: max(20px, env(safe-area-inset-bottom));
+    left: 20px;
+    display: block;
+    margin: 0;
+    color: rgba(232, 212, 177, 0.72);
+    font-family: "Songti SC", "STSong", serif;
+    font-size: 12px;
+    letter-spacing: 0.1em;
+    text-align: center;
+  }
+
+  .final-sheet {
+    width: min(82vw, 430px);
+    height: auto;
+    min-width: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 1ms !important;
+  }
+}
