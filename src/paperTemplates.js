@@ -1,4 +1,5 @@
-export const PAPER_SELECTION_KEY = "lead-typewriter-paper-v1";
+export const PAPER_SELECTION_KEY = "typer-paper-v1";
+const LEGACY_PAPER_SELECTION_KEY = "lead-typewriter-paper-v1";
 
 export const PAPER_TEMPLATES = [
   {
@@ -66,7 +67,11 @@ export function getPaperTemplate(id) {
 }
 
 export function loadPaperTemplateId() {
-  const stored = localStorage.getItem(PAPER_SELECTION_KEY);
+  let stored = localStorage.getItem(PAPER_SELECTION_KEY);
+  if (!stored) {
+    stored = localStorage.getItem(LEGACY_PAPER_SELECTION_KEY);
+    if (stored) localStorage.setItem(PAPER_SELECTION_KEY, stored);
+  }
   return PAPER_TEMPLATES.some((template) => template.id === stored)
     ? stored
     : PAPER_TEMPLATES[0].id;

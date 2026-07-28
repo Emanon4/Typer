@@ -1,8 +1,8 @@
 import { paintInkGlyph } from "./InkGlyph";
+import { MAX_LINES, MAX_LINE_UNITS } from "./typewriterConfig";
 
 const PAGE_WIDTH = 2480;
 const PAGE_HEIGHT = 3508;
-const MAX_LINE_UNITS = 17.5;
 
 function loadImage(source) {
   return new Promise((resolve, reject) => {
@@ -50,7 +50,7 @@ function makeFileName(paper) {
   })
     .format(new Date())
     .replaceAll("/", "-");
-  return `铅字写作所-${paper.fileLabel}-${date}.png`;
+  return `Typer-${paper.fileLabel}-${date}.png`;
 }
 
 function canvasToBlob(canvas) {
@@ -80,9 +80,9 @@ export async function exportPaperPng(model, paper) {
   const copyHeight = PAGE_HEIGHT * 0.83;
   const inkLeft = copyLeft + copyWidth * 0.08;
   const inkWidth = copyWidth * 0.84;
-  const linePitch = copyHeight * 0.073;
-  const glyphWidth = copyWidth * 0.052;
-  const glyphHeight = copyWidth * 0.051;
+  const linePitch = copyHeight / (MAX_LINES + 0.5);
+  const glyphWidth = copyWidth * 0.035;
+  const glyphHeight = copyWidth * 0.035;
 
   for (const [lineIndex, line] of model.lines.entries()) {
     for (const glyph of line.glyphs) {

@@ -1,5 +1,18 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createAudioEngine } from "./audioEngine";
+import {
+  DESK_SCENE_KEY,
+  DESK_SCENES,
+  getDeskAsset,
+  getDeskScene,
+  getMachineStyle,
+  loadDeskSceneId,
+  loadMachineStyleId,
+  loadViewMode,
+  MACHINE_STYLE_KEY,
+  MACHINE_STYLES,
+  VIEW_MODE_KEY,
+} from "./deskScenes";
 import { exportPaperPng } from "./exportPaper";
 import { InkGlyph } from "./InkGlyph";
 import {
@@ -8,16 +21,22 @@ import {
   PAPER_SELECTION_KEY,
   PAPER_TEMPLATES,
 } from "./paperTemplates";
+import {
+  LINE_PITCH_CQW,
+  LIVE_PAPER_WIDTH_PERCENT,
+  MAX_LINES,
+  MAX_LINE_UNITS,
+  PAPER_BAIL_WIDTH_PERCENT,
+  PAPER_FEED_PERCENT,
+  PAPER_START_LINE_PERCENT,
+} from "./typewriterConfig";
 
-const MAX_LINE_UNITS = 17.5;
-const MAX_LINES = 11;
-const LINE_PITCH_CQW = 5.2;
-const PAPER_FEED_PERCENT = 3.37;
-const PAPER_START_LINE_PERCENT = 11.3;
-const LIVE_PAPER_WIDTH_PERCENT = 42;
-const PAPER_BAIL_WIDTH_PERCENT = 49;
-const STORAGE_KEY = "lead-typewriter-draft-v1";
-const SOUND_KEY = "lead-typewriter-sound-v1";
+const STORAGE_KEY = "typer-draft-v1";
+const SOUND_KEY = "typer-sound-v1";
+const MANUSCRIPT_KEY = "typer-manuscripts-v1";
+const LEGACY_STORAGE_KEY = "lead-typewriter-draft-v1";
+const LEGACY_SOUND_KEY = "lead-typewriter-sound-v1";
+const LEGACY_MANUSCRIPT_KEY = "lead-typewriter-manuscripts-v1";
 
 const KEY_ROWS = [
   {
@@ -111,22 +130,98 @@ function blankModel() {
   };
 }
 
+function cloneModel(model) {
+  return JSON.parse(JSON.stringify(model));
+}
+
+function readMigratedValue(key, legacyKey) {
+  const current = localStorage.getItem(key);
+  if (current !== null) return current;
+  const legacy = localStorage.getItem(legacyKey);
+  if (legacy !== null) localStorage.setItem(key, legacy);
+  return legacy;
+}
+
+function loadManuscripts() {
+  try {
+    const parsed = JSON.parse(
+      readMigratedValue(MANUSCRIPT_KEY, LEGACY_MANUSCRIPT_KEY),
+    );
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter(
+      (entry) =>
+        entry &&
+        entry.id &&
+        entry.savedAt &&
+        Array.isArray(entry.model?.lines),
+    );
+  } catch {
+    return [];
+  }
+}
+
+function paperStyle(paper) {
+  return {
+    "--paper-texture": `url("${paper.asset}")`,
+    "--paper-base": paper.base,
+    "--paper-size": paper.backgroundSize,
+    "--paper-position": paper.backgroundPosition,
+  };
+}
+
+function manuscriptExcerpt(model) {
+  const text = model.lines
+    .flatMap((line) => line.glyphs.map((glyph) => glyph.character))
+    .join("")
+    .replace(/\s+/gu, " ")
+    .trim();
+  return text || "空白稿纸";
+}
+
+function formatSavedAt(value) {
+  return new Intl.DateTimeFormat("zh-CN", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(new Date(value));
+}
+
+function FinishedSheet({ draft, paper }) {
+  return (
+    <article className="final-sheet" style={paperStyle(paper)}>
+      <div className="paper-grain" />
+      <div className="final-copy">
+        {draft.lines.map((line, lineIndex) => (
+          <div className="final-line" key={`line-${lineIndex}`}>
+            {line.glyphs.map((glyph) => (
+              <InkGlyph glyph={glyph} final key={glyph.id} />
+            ))}
+          </div>
+        ))}
+      </div>
+    </article>
+  );
+}
+
 function loadDraft() {
   try {
-    const parsed = JSON.parse(localStorage.getItem(STORAGE_KEY));
+    const parsed = JSON.parse(readMigratedValue(STORAGE_KEY, LEGACY_STORAGE_KEY));
     if (!parsed || !Array.isArray(parsed.lines) || !parsed.lines.length) {
       return blankModel();
     }
+    const activeLine = Math.min(
+      Number.isFinite(parsed.activeLine) ? parsed.activeLine : 0,
+      Math.min(parsed.lines.length - 1, MAX_LINES - 1),
+    );
     return {
       lines: parsed.lines.slice(0, MAX_LINES).map((line) => ({
         glyphs: Array.isArray(line.glyphs) ? line.glyphs : [],
         cursor: Number.isFinite(line.cursor) ? line.cursor : 0,
       })),
-      activeLine: Math.min(
-        Number.isFinite(parsed.activeLine) ? parsed.activeLine : 0,
-        Math.min(parsed.lines.length - 1, MAX_LINES - 1),
-      ),
-      pageFull: Boolean(parsed.pageFull),
+      activeLine,
+      pageFull: Boolean(parsed.pageFull) && activeLine >= MAX_LINES - 1,
     };
   } catch {
     return blankModel();
@@ -167,7 +262,7 @@ function codeHash(value) {
 export function App() {
   const [model, setModel] = useState(loadDraft);
   const [soundOn, setSoundOn] = useState(
-    () => localStorage.getItem(SOUND_KEY) !== "off",
+    () => readMigratedValue(SOUND_KEY, LEGACY_SOUND_KEY) !== "off",
   );
   const [activeKey, setActiveKey] = useState("");
   const [machineHit, setMachineHit] = useState(false);
@@ -179,7 +274,16 @@ export function App() {
   const [ejected, setEjected] = useState(false);
   const [exportState, setExportState] = useState("idle");
   const [paperBoxOpen, setPaperBoxOpen] = useState(false);
+  const [manuscriptBoxOpen, setManuscriptBoxOpen] = useState(false);
+  const [manuscripts, setManuscripts] = useState(loadManuscripts);
+  const [viewingManuscript, setViewingManuscript] = useState(null);
+  const [savedManuscriptId, setSavedManuscriptId] = useState("");
   const [paperId, setPaperId] = useState(loadPaperTemplateId);
+  const [viewMode, setViewMode] = useState(loadViewMode);
+  const [deskSceneId, setDeskSceneId] = useState(loadDeskSceneId);
+  const [machineStyleId, setMachineStyleId] = useState(loadMachineStyleId);
+  const [workbenchOpen, setWorkbenchOpen] = useState(false);
+  const [fullscreen, setFullscreen] = useState(Boolean(document.fullscreenElement));
   const [status, setStatus] = useState("点击纸张，开始写作");
 
   const modelRef = useRef(model);
@@ -199,18 +303,46 @@ export function App() {
     carriageX * (LIVE_PAPER_WIDTH_PERCENT / PAPER_BAIL_WIDTH_PERCENT);
   const hasInk = model.lines.some((line) => line.glyphs.length > 0);
   const selectedPaper = getPaperTemplate(paperId);
-  const paperVisualStyle = {
-    "--paper-texture": `url("${selectedPaper.asset}")`,
-    "--paper-base": selectedPaper.base,
-    "--paper-size": selectedPaper.backgroundSize,
-    "--paper-position": selectedPaper.backgroundPosition,
+  const paperVisualStyle = paperStyle(selectedPaper);
+  const selectedDeskScene = getDeskScene(deskSceneId);
+  const selectedMachineStyle = getMachineStyle(machineStyleId);
+  const deskAsset = getDeskAsset(deskSceneId, machineStyleId);
+
+  const strikeGeometry = useMemo(() => {
+    const lane = (strike.hash % 23) - 11;
+    const originX = 50 + lane * 1.08;
+    return {
+      clipPath: `polygon(49.48% 52.1%, 50.52% 52.1%, ${originX + 0.82}% 69.2%, ${originX - 0.82}% 69.2%)`,
+      originX,
+    };
+  }, [strike]);
+
+  const deskStrikeGeometry = useMemo(() => {
+    const lane = (strike.hash % 23) - 11;
+    const geometry = selectedDeskScene.strike;
+    const originX = geometry.centerX + (lane / 11) * geometry.span;
+    return {
+      clipPath: `polygon(49.42% ${geometry.topY}%, 50.58% ${geometry.topY}%, ${originX + 0.82}% ${geometry.originY}%, ${originX - 0.82}% ${geometry.originY}%)`,
+      originX,
+      originY: geometry.originY,
+    };
+  }, [selectedDeskScene, strike]);
+
+  const deskPaperGeometry = {
+    "--desk-paper-left": `${selectedDeskScene.paper.left}%`,
+    "--desk-paper-top": `${selectedDeskScene.paper.top}%`,
+    "--desk-paper-width": `${selectedDeskScene.paper.width}%`,
+    "--desk-paper-clip": `${selectedDeskScene.paper.clip}%`,
   };
 
-  const strikeClip = useMemo(() => {
-    const lane = (strike.hash % 17) - 8;
-    const topX = 50 + lane * 0.72;
-    return `polygon(${topX - 0.42}% 52.5%, ${topX + 0.42}% 52.5%, 50.65% 68.8%, 49.35% 68.8%)`;
-  }, [strike]);
+  const deskKeyPositions = useMemo(() => {
+    const bounds = selectedDeskScene.keys;
+    return KEY_POSITIONS.map((key) => ({
+      ...key,
+      left: bounds.left + ((key.left - 28.9) / 42.9) * bounds.width,
+      top: bounds.top + ((key.top - 69.2) / 12.9) * bounds.height,
+    }));
+  }, [selectedDeskScene]);
 
   function rememberTimer(timer) {
     timersRef.current.push(timer);
@@ -457,6 +589,7 @@ export function App() {
     processingRef.current = false;
     commitModel(fresh);
     setEjected(false);
+    setSavedManuscriptId("");
     setExportState("idle");
     setStatus("新纸已装入");
     rememberTimer(window.setTimeout(focusWriter, 120));
@@ -472,8 +605,42 @@ export function App() {
     }
   }
 
+  function switchViewMode(nextMode) {
+    inputRef.current?.blur();
+    setViewMode(nextMode);
+    setWorkbenchOpen(false);
+    setStatus(nextMode === "desk" ? "作家书桌已就绪" : "机械特写已就绪");
+    rememberTimer(window.setTimeout(focusWriter, 180));
+  }
+
+  function chooseDeskScene(scene) {
+    setDeskSceneId(scene.id);
+    setStatus(`已进入「${scene.name}」`);
+    play("space");
+  }
+
+  function chooseMachineStyle(machine) {
+    setMachineStyleId(machine.id);
+    setStatus(`已换成「${machine.name}」`);
+    play("space");
+  }
+
+  function toggleWorkbench() {
+    setWorkbenchOpen((open) => !open);
+  }
+
+  async function toggleFullscreen() {
+    try {
+      if (document.fullscreenElement) await document.exitFullscreen();
+      else await document.documentElement.requestFullscreen();
+    } catch {
+      setStatus("当前浏览器没有允许进入全屏");
+    }
+  }
+
   function openPaperBox() {
     inputRef.current?.blur();
+    setWorkbenchOpen(false);
     setPaperBoxOpen(true);
     setStatus("正在挑选稿纸");
   }
@@ -490,12 +657,66 @@ export function App() {
     play("space");
   }
 
-  async function exportDraft() {
-    if (!hasInk || exportState === "exporting") return;
+  function openManuscriptBox() {
+    inputRef.current?.blur();
+    setWorkbenchOpen(false);
+    setManuscriptBoxOpen(true);
+    setStatus("正在查看文稿箱");
+  }
+
+  function closeManuscriptBox() {
+    setManuscriptBoxOpen(false);
+    if (!ejected) {
+      setStatus("中文输入已就绪");
+      rememberTimer(window.setTimeout(focusWriter, 120));
+    }
+  }
+
+  function saveToManuscriptBox() {
+    if (!hasInk) return;
+
+    const snapshot = cloneModel(modelRef.current);
+    const duplicate = manuscripts.find(
+      (entry) =>
+        entry.paperId === paperId &&
+        JSON.stringify(entry.model) === JSON.stringify(snapshot),
+    );
+    if (duplicate) {
+      setSavedManuscriptId(duplicate.id);
+      setStatus("这张稿纸已经在文稿箱中");
+      return;
+    }
+
+    const savedAt = new Date().toISOString();
+    const entry = {
+      id: globalThis.crypto?.randomUUID?.() || `${Date.now()}`,
+      savedAt,
+      paperId,
+      model: snapshot,
+      excerpt: manuscriptExcerpt(snapshot),
+    };
+    setManuscripts((current) => [entry, ...current]);
+    setSavedManuscriptId(entry.id);
+    setStatus("稿纸已存入文稿箱");
+    play("space");
+  }
+
+  function viewManuscript(entry) {
+    setManuscriptBoxOpen(false);
+    setViewingManuscript(entry);
+  }
+
+  function returnToManuscriptBox() {
+    setViewingManuscript(null);
+    setManuscriptBoxOpen(true);
+  }
+
+  async function exportModel(sourceModel, sourcePaper) {
+    if (exportState === "exporting") return;
     setExportState("exporting");
     setStatus("正在生成 300 DPI 稿纸");
     try {
-      await exportPaperPng(modelRef.current, selectedPaper);
+      await exportPaperPng(sourceModel, sourcePaper);
       setExportState("done");
       setStatus("高分辨率稿纸已导出");
       rememberTimer(window.setTimeout(() => setExportState("idle"), 1800));
@@ -507,6 +728,19 @@ export function App() {
     }
   }
 
+  function exportDraft() {
+    if (!hasInk) return;
+    exportModel(modelRef.current, selectedPaper);
+  }
+
+  function exportStoredManuscript() {
+    if (!viewingManuscript) return;
+    exportModel(
+      viewingManuscript.model,
+      getPaperTemplate(viewingManuscript.paperId),
+    );
+  }
+
   const exportLabel =
     exportState === "exporting"
       ? "正在导出…"
@@ -515,6 +749,28 @@ export function App() {
         : exportState === "error"
           ? "请重试"
           : "导出 PNG";
+
+  const writerInput = (
+    <textarea
+      ref={inputRef}
+      className="ime-input"
+      aria-label="在 Typer 稿纸上输入文字，支持系统中文输入法"
+      autoCapitalize="sentences"
+      autoCorrect="off"
+      spellCheck="false"
+      onKeyDown={handleKeyDown}
+      onInput={handleInput}
+      onCompositionStart={handleCompositionStart}
+      onCompositionUpdate={handleCompositionUpdate}
+      onCompositionEnd={handleCompositionEnd}
+      onPaste={handlePaste}
+      onFocus={() => {
+        setFocused(true);
+        setStatus("中文输入已就绪");
+      }}
+      onBlur={() => setFocused(false)}
+    />
+  );
 
   useEffect(() => {
     modelRef.current = model;
@@ -531,6 +787,30 @@ export function App() {
   }, [paperId]);
 
   useEffect(() => {
+    localStorage.setItem(MANUSCRIPT_KEY, JSON.stringify(manuscripts));
+  }, [manuscripts]);
+
+  useEffect(() => {
+    localStorage.setItem(VIEW_MODE_KEY, viewMode);
+  }, [viewMode]);
+
+  useEffect(() => {
+    localStorage.setItem(DESK_SCENE_KEY, deskSceneId);
+  }, [deskSceneId]);
+
+  useEffect(() => {
+    localStorage.setItem(MACHINE_STYLE_KEY, machineStyleId);
+  }, [machineStyleId]);
+
+  useEffect(() => {
+    const handleFullscreenChange = () =>
+      setFullscreen(Boolean(document.fullscreenElement));
+    document.addEventListener("fullscreenchange", handleFullscreenChange);
+    return () =>
+      document.removeEventListener("fullscreenchange", handleFullscreenChange);
+  }, []);
+
+  useEffect(() => {
     audio().preload();
     const timer = window.setTimeout(focusWriter, 180);
     return () => window.clearTimeout(timer);
@@ -544,14 +824,255 @@ export function App() {
   );
 
   return (
-    <main className="app-shell">
+    <main className={`app-shell view-${viewMode}`}>
+      {viewMode === "desk" ? (
+        <section
+          className={`desk-stage${machineHit ? " is-hit" : ""}${
+            returning ? " is-returning" : ""
+          }${ejecting ? " is-ejecting" : ""}`}
+          onPointerDown={focusWriter}
+          inert={
+            ejected || paperBoxOpen || manuscriptBoxOpen || viewingManuscript
+              ? true
+              : undefined
+          }
+          aria-hidden={
+            ejected || paperBoxOpen || manuscriptBoxOpen || viewingManuscript
+              ? "true"
+              : undefined
+          }
+          aria-label="Typer 全屏作家书桌"
+        >
+          <img
+            className="desk-ambient-scene"
+            src={deskAsset}
+            alt=""
+            aria-hidden="true"
+            draggable="false"
+          />
+          <div className="desk-canvas" style={deskPaperGeometry}>
+            <img
+              className="desk-scene"
+              src={deskAsset}
+              alt={`${selectedDeskScene.name}中的${selectedMachineStyle.name}打字机`}
+              draggable="false"
+            />
+
+            <div className="desk-paper-window" aria-hidden="true">
+              <div
+                className="desk-paper-sheet"
+                style={{
+                  ...paperVisualStyle,
+                  "--desk-carriage-x": `${carriageX}%`,
+                  "--desk-feed-y": `${-model.activeLine * PAPER_FEED_PERCENT}%`,
+                }}
+              >
+                <div className="paper-grain" />
+                <div className="desk-live-ink">
+                  {model.lines.map((line, lineIndex) =>
+                    line.glyphs.map((glyph) => (
+                      <span
+                        className="live-glyph-row"
+                        style={{
+                          top: `calc(${selectedDeskScene.paper.start}% + ${lineIndex * LINE_PITCH_CQW}cqw)`,
+                        }}
+                        key={glyph.id}
+                      >
+                        <InkGlyph glyph={glyph} />
+                      </span>
+                    )),
+                  )}
+                  {compositionText && (
+                    <span
+                      className="composition-preview"
+                      style={{
+                        left: `${8 + (activeLine.cursor / MAX_LINE_UNITS) * 84}%`,
+                        top: `calc(${selectedDeskScene.paper.start}% + ${model.activeLine * LINE_PITCH_CQW}cqw)`,
+                      }}
+                    >
+                      {compositionText}
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {strike.id > 0 && (
+              <img
+                key={`desk-${strike.id}`}
+                className="desk-typebar-strike"
+                src={deskAsset}
+                style={{
+                  clipPath: deskStrikeGeometry.clipPath,
+                  "--bar-origin-x": `${deskStrikeGeometry.originX}%`,
+                  "--bar-origin-y": `${deskStrikeGeometry.originY}%`,
+                }}
+                alt=""
+                aria-hidden="true"
+                draggable="false"
+              />
+            )}
+
+            <div className="desk-key-hotspots" aria-hidden="true">
+              {deskKeyPositions.map((key) => (
+                <span
+                  className={`desk-key-hotspot${
+                    activeKey === key.code ? " active" : ""
+                  }`}
+                  style={{ left: `${key.left}%`, top: `${key.top}%` }}
+                  key={key.code}
+                />
+              ))}
+            </div>
+          </div>
+
+          {writerInput}
+
+          <header className="desk-brand-lockup">
+            <span className="desk-brand-name">Typer</span>
+            <span className="desk-slogan">让你情不自禁地开始写作！</span>
+          </header>
+
+          <nav className="desk-quick-actions" aria-label="Typer 快捷控制">
+            <button
+              className="glass-control"
+              type="button"
+              onPointerDown={(event) => event.stopPropagation()}
+              onClick={toggleWorkbench}
+              aria-expanded={workbenchOpen}
+            >
+              工作台
+            </button>
+            <button
+              className="glass-control"
+              type="button"
+              onPointerDown={(event) => event.stopPropagation()}
+              onClick={ejectPaper}
+            >
+              退纸 ↗
+            </button>
+          </nav>
+
+          {workbenchOpen && (
+            <aside
+              className="workbench-panel"
+              aria-label="Typer 工作台设置"
+              onPointerDown={(event) => event.stopPropagation()}
+            >
+              <header className="workbench-header">
+                <div>
+                  <p>Typer</p>
+                  <h2>工作台</h2>
+                </div>
+                <button type="button" onClick={toggleWorkbench}>
+                  收起
+                </button>
+              </header>
+
+              <div className="workbench-section">
+                <span className="workbench-label">写作模式</span>
+                <div className="mode-options">
+                  <button className="selected" type="button">
+                    作家书桌
+                  </button>
+                  <button type="button" onClick={() => switchViewMode("closeup")}>
+                    机械特写
+                  </button>
+                </div>
+              </div>
+
+              <div className="workbench-section">
+                <span className="workbench-label">书桌场景</span>
+                <div className="visual-options scene-options">
+                  {DESK_SCENES.map((scene) => (
+                    <button
+                      className={scene.id === deskSceneId ? "selected" : ""}
+                      type="button"
+                      aria-pressed={scene.id === deskSceneId}
+                      onClick={() => chooseDeskScene(scene)}
+                      key={scene.id}
+                    >
+                      <img
+                        src={getDeskAsset(scene.id, machineStyleId)}
+                        alt=""
+                        draggable="false"
+                      />
+                      <span>{scene.name}</span>
+                      <small>{scene.era}</small>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="workbench-section">
+                <span className="workbench-label">打字机</span>
+                <div className="visual-options machine-options">
+                  {MACHINE_STYLES.map((machine) => (
+                    <button
+                      className={
+                        machine.id === machineStyleId ? "selected" : ""
+                      }
+                      type="button"
+                      aria-pressed={machine.id === machineStyleId}
+                      onClick={() => chooseMachineStyle(machine)}
+                      key={machine.id}
+                    >
+                      <img
+                        src={getDeskAsset(deskSceneId, machine.id)}
+                        alt=""
+                        draggable="false"
+                      />
+                      <span>{machine.name}</span>
+                      <small>{machine.era}</small>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="workbench-tools">
+                <button type="button" onClick={openPaperBox}>稿纸箱</button>
+                <button type="button" onClick={openManuscriptBox}>
+                  文稿箱{manuscripts.length ? ` ${manuscripts.length}` : ""}
+                </button>
+                <button type="button" onClick={toggleSound}>
+                  声音：{soundOn ? "开" : "关"}
+                </button>
+                <button
+                  type="button"
+                  disabled={!hasInk || exportState === "exporting"}
+                  onClick={exportDraft}
+                >
+                  {exportLabel}
+                </button>
+                <button type="button" onClick={toggleFullscreen}>
+                  {fullscreen ? "退出全屏" : "进入全屏"}
+                </button>
+              </div>
+            </aside>
+          )}
+
+          <div className={`desk-writer-status${focused ? " focused" : ""}`} role="status">
+            <span className="status-lamp" />
+            {status}
+            {hasInk && !model.pageFull ? ` · 第 ${model.activeLine + 1} 行` : ""}
+          </div>
+        </section>
+      ) : (
       <section
         className={`typewriter-stage${machineHit ? " is-hit" : ""}${
           returning ? " is-returning" : ""
         }${ejecting ? " is-ejecting" : ""}`}
         onPointerDown={focusWriter}
-        inert={ejected || paperBoxOpen ? true : undefined}
-        aria-hidden={ejected || paperBoxOpen ? "true" : undefined}
+        inert={
+          ejected || paperBoxOpen || manuscriptBoxOpen || viewingManuscript
+            ? true
+            : undefined
+        }
+        aria-hidden={
+          ejected || paperBoxOpen || manuscriptBoxOpen || viewingManuscript
+            ? "true"
+            : undefined
+        }
         aria-label="中文机械打字机写作台"
       >
         <img
@@ -561,43 +1082,44 @@ export function App() {
           draggable="false"
         />
 
-        <div
-          className="paper-sheet live-paper"
-          style={{
-            "--carriage-x": `${carriageX}%`,
-            "--paper-feed-y": `${-model.activeLine * PAPER_FEED_PERCENT}%`,
-            ...paperVisualStyle,
-          }}
-          data-active-line={model.activeLine}
-          aria-hidden="true"
-        >
-          <div className="paper-grain" />
-          <div className="live-ink">
-            {model.lines.map((line, lineIndex) =>
-              line.glyphs.map((glyph) => (
+        <div className="paper-window" aria-hidden="true">
+          <div
+            className="paper-sheet live-paper"
+            style={{
+              "--carriage-x": `${carriageX}%`,
+              "--paper-feed-y": `${-model.activeLine * PAPER_FEED_PERCENT}%`,
+              ...paperVisualStyle,
+            }}
+            data-active-line={model.activeLine}
+          >
+            <div className="paper-grain" />
+            <div className="live-ink">
+              {model.lines.map((line, lineIndex) =>
+                line.glyphs.map((glyph) => (
+                  <span
+                    className="live-glyph-row"
+                    data-line-index={lineIndex}
+                    style={{
+                      top: `calc(${PAPER_START_LINE_PERCENT}% + ${lineIndex * LINE_PITCH_CQW}cqw)`,
+                    }}
+                    key={glyph.id}
+                  >
+                    <InkGlyph glyph={glyph} />
+                  </span>
+                )),
+              )}
+              {compositionText && (
                 <span
-                  className="live-glyph-row"
-                  data-line-index={lineIndex}
+                  className="composition-preview"
                   style={{
-                    top: `calc(${PAPER_START_LINE_PERCENT}% + ${lineIndex * LINE_PITCH_CQW}cqw)`,
+                    left: `${8 + (activeLine.cursor / MAX_LINE_UNITS) * 84}%`,
+                    top: `calc(${PAPER_START_LINE_PERCENT}% + ${model.activeLine * LINE_PITCH_CQW}cqw)`,
                   }}
-                  key={glyph.id}
                 >
-                  <InkGlyph glyph={glyph} />
+                  {compositionText}
                 </span>
-              )),
-            )}
-            {compositionText && (
-              <span
-                className="composition-preview"
-                style={{
-                  left: `${8 + (activeLine.cursor / MAX_LINE_UNITS) * 84}%`,
-                  top: `calc(${PAPER_START_LINE_PERCENT}% + ${model.activeLine * LINE_PITCH_CQW}cqw)`,
-                }}
-              >
-                {compositionText}
-              </span>
-            )}
+              )}
+            </div>
           </div>
         </div>
 
@@ -610,20 +1132,15 @@ export function App() {
           draggable="false"
         />
 
-        <img
-          className="machine-foreground"
-          src="/assets/typewriter-base.png"
-          alt=""
-          aria-hidden="true"
-          draggable="false"
-        />
-
         {strike.id > 0 && (
           <img
             key={strike.id}
             className="typebar-strike"
             src="/assets/typewriter-base.png"
-            style={{ clipPath: strikeClip }}
+            style={{
+              clipPath: strikeGeometry.clipPath,
+              "--bar-origin-x": `${strikeGeometry.originX}%`,
+            }}
             alt=""
             aria-hidden="true"
             draggable="false"
@@ -659,29 +1176,11 @@ export function App() {
           />
         </div>
 
-        <textarea
-          ref={inputRef}
-          className="ime-input"
-          aria-label="在打字机纸张上输入文字，支持系统中文输入法"
-          autoCapitalize="sentences"
-          autoCorrect="off"
-          spellCheck="false"
-          onKeyDown={handleKeyDown}
-          onInput={handleInput}
-          onCompositionStart={handleCompositionStart}
-          onCompositionUpdate={handleCompositionUpdate}
-          onCompositionEnd={handleCompositionEnd}
-          onPaste={handlePaste}
-          onFocus={() => {
-            setFocused(true);
-            setStatus("中文输入已就绪");
-          }}
-          onBlur={() => setFocused(false)}
-        />
+        {writerInput}
 
         <header className="brand-lockup">
-          <span className="brand-name">铅字写作所</span>
-          <span className="machine-number">活字一号 · 中文试作机</span>
+          <span className="brand-name">Typer</span>
+          <span className="machine-number">让你情不自禁地开始写作！</span>
         </header>
 
         <nav className="stage-actions" aria-label="打字机控制">
@@ -689,9 +1188,25 @@ export function App() {
             className="brass-button"
             type="button"
             onPointerDown={(event) => event.stopPropagation()}
+            onClick={() => switchViewMode("desk")}
+          >
+            作家书桌
+          </button>
+          <button
+            className="brass-button"
+            type="button"
+            onPointerDown={(event) => event.stopPropagation()}
             onClick={openPaperBox}
           >
             稿纸箱
+          </button>
+          <button
+            className="brass-button"
+            type="button"
+            onPointerDown={(event) => event.stopPropagation()}
+            onClick={openManuscriptBox}
+          >
+            文稿箱{manuscripts.length ? ` ${manuscripts.length}` : ""}
           </button>
           <button
             className="brass-button"
@@ -728,9 +1243,10 @@ export function App() {
         </div>
 
         <p className="instruction-line">
-          稿纸箱可换纸 · 使用系统中文输入法 · 回车换行 · 退格只移动字车 · 退纸成稿
+          A4 稿纸 · 系统中文输入法 · 回车换行 · 退格只移动字车 · 退纸后可存入文稿箱
         </p>
       </section>
+      )}
 
       {paperBoxOpen && (
         <section
@@ -748,7 +1264,7 @@ export function App() {
           <div className="paper-box-drawer">
             <header className="paper-box-header">
               <div>
-                <p className="paper-box-kicker">活字一号 · 纸库</p>
+                <p className="paper-box-kicker">Typer · 纸库</p>
                 <h2>稿纸箱</h2>
               </div>
               <button
@@ -793,6 +1309,81 @@ export function App() {
         </section>
       )}
 
+      {manuscriptBoxOpen && (
+        <section
+          className="manuscript-box-overlay"
+          role="dialog"
+          aria-modal="true"
+          aria-label="文稿箱"
+        >
+          <button
+            className="paper-box-scrim"
+            type="button"
+            aria-label="关闭文稿箱"
+            onClick={closeManuscriptBox}
+          />
+          <div className="manuscript-box-drawer">
+            <header className="paper-box-header">
+              <div>
+                <p className="paper-box-kicker">Typer · 成稿档案</p>
+                <h2>文稿箱</h2>
+              </div>
+              <button
+                className="paper-box-close"
+                type="button"
+                onClick={closeManuscriptBox}
+              >
+                收起
+              </button>
+            </header>
+            <p className="paper-box-intro">
+              退纸后的稿件会连同纸张、字迹与换行一起保存。打开任意稿纸可重新查看和导出。
+            </p>
+            {manuscripts.length ? (
+              <div className="manuscript-list">
+                {manuscripts.map((entry, index) => {
+                  const paper = getPaperTemplate(entry.paperId);
+                  return (
+                    <button
+                      className="manuscript-card"
+                      type="button"
+                      onClick={() => viewManuscript(entry)}
+                      key={entry.id}
+                    >
+                      <span
+                        className="manuscript-card-sheet"
+                        style={paperStyle(paper)}
+                      >
+                        <span className="paper-grain" />
+                        <span className="manuscript-card-copy">
+                          {entry.excerpt || manuscriptExcerpt(entry.model)}
+                        </span>
+                      </span>
+                      <span className="manuscript-card-meta">
+                        <span className="manuscript-card-title">
+                          第 {manuscripts.length - index} 份稿纸
+                        </span>
+                        <span className="manuscript-card-paper">
+                          {paper.name} · {entry.model.lines.length} 行
+                        </span>
+                        <time dateTime={entry.savedAt}>
+                          {formatSavedAt(entry.savedAt)}
+                        </time>
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="manuscript-empty">
+                <span className="manuscript-empty-sheet" />
+                <p>还没有成稿。写完后退纸，再选择「存入文稿箱」。</p>
+              </div>
+            )}
+          </div>
+        </section>
+      )}
+
       {ejected && (
         <section
           className="page-review"
@@ -803,21 +1394,19 @@ export function App() {
           <div className="review-scrim" />
           <div className="review-content">
             <p className="review-kicker">— 你的稿纸 —</p>
-            <article className="final-sheet" style={paperVisualStyle}>
-              <div className="paper-grain" />
-              <div className="final-copy">
-                {model.lines.map((line, lineIndex) => (
-                  <div className="final-line" key={`line-${lineIndex}`}>
-                    {line.glyphs.map((glyph) => (
-                      <InkGlyph glyph={glyph} final key={glyph.id} />
-                    ))}
-                  </div>
-                ))}
-              </div>
-            </article>
+            <FinishedSheet draft={model} paper={selectedPaper} />
             <div className="review-actions">
               <button
                 className="fresh-sheet-button"
+                type="button"
+                onClick={
+                  savedManuscriptId ? openManuscriptBox : saveToManuscriptBox
+                }
+              >
+                {savedManuscriptId ? "打开文稿箱" : "存入文稿箱"}
+              </button>
+              <button
+                className="fresh-sheet-button secondary"
                 type="button"
                 disabled={exportState === "exporting"}
                 onClick={exportDraft}
@@ -830,6 +1419,48 @@ export function App() {
                 onClick={loadFreshSheet}
               >
                 装入新纸
+              </button>
+            </div>
+          </div>
+        </section>
+      )}
+
+      {viewingManuscript && (
+        <section
+          className="page-review stored-review"
+          role="dialog"
+          aria-modal="true"
+          aria-label="文稿箱中的稿纸"
+        >
+          <button
+            className="review-scrim review-scrim-button"
+            type="button"
+            aria-label="返回文稿箱"
+            onClick={returnToManuscriptBox}
+          />
+          <div className="review-content">
+            <p className="review-kicker">
+              — 文稿箱 · {formatSavedAt(viewingManuscript.savedAt)} —
+            </p>
+            <FinishedSheet
+              draft={viewingManuscript.model}
+              paper={getPaperTemplate(viewingManuscript.paperId)}
+            />
+            <div className="review-actions">
+              <button
+                className="fresh-sheet-button"
+                type="button"
+                disabled={exportState === "exporting"}
+                onClick={exportStoredManuscript}
+              >
+                {exportLabel}
+              </button>
+              <button
+                className="fresh-sheet-button secondary"
+                type="button"
+                onClick={returnToManuscriptBox}
+              >
+                返回文稿箱
               </button>
             </div>
           </div>

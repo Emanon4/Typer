@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "react";
+import { MAX_LINE_UNITS } from "./typewriterConfig";
 
 const CJK_PATTERN =
   /[\u2E80-\u2EFF\u2F00-\u2FDF\u3000-\u303F\u3040-\u30FF\u3400-\u4DBF\u4E00-\u9FFF\uF900-\uFAFF\u{20000}-\u{2FA1F}]/u;
@@ -139,7 +140,7 @@ export function InkGlyph({ glyph, final = false }) {
     <span
       className={`ink-glyph${final ? " final-ink" : ""}`}
       style={{
-        left: `${8 + (glyph.x / 17.5) * 84}%`,
+        left: `${8 + (glyph.x / MAX_LINE_UNITS) * 84}%`,
         "--ink-rotate": `${wobble}deg`,
         "--ink-lift": `${lift}px`,
       }}
