@@ -1,0 +1,48 @@
+{
+  "status": "passed",
+  "blender_version": "5.2.0 LTS",
+  "visible_design_source": [
+    "public/assets/typewriter-base.png",
+    "public/assets/typewriter-with-paper.png"
+  ],
+  "image_calibration": {
+    "resolution_px": [
+      1536,
+      1024
+    ],
+    "pixels_per_metre": 1861.904762,
+    "a4_width_px": 391,
+    "a4_width_m": 0.21
+  },
+  "required_rig_object_count": 16,
+  "type_slug_strike_error_m": 1e-08,
+  "typebar_length_m": 0.08604113,
+  "typebar_max_length_error_m": 1e-08,
+  "carriage_pitch_m": 0.0072,
+  "carriage_home_error_m": 0.0,
+  "line_feed_m": 0.0085,
+  "reference_objects_excluded_from_export": true,
+  "paper_hierarchy": "Paper_A4 > Paper_Feed_Root > Carriage_Root",
+  "prototype_anchors_px": {
+    "key_h": [
+      761.0,
+      797.0
+    ],
+    "typebar_h_pivot": [
+      756.0,
+      650.0
+    ],
+    "strike_point": [
+      770.5,
+      512.0
+    ],
+    "platen_center": [
+      770.5,
+      518.0
+    ],
+    "paper_top_center": [
+      770.5,
+      124.0
+    ]
+  }
+}
