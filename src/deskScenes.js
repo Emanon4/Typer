@@ -8,7 +8,7 @@ export const DESK_SCENES = [
     name: "夜灯木桌",
     era: "深夜书房",
     description: "绿罩台灯、旧书与冷掉的烟灰。",
-    paper: { left: 37.6, top: 8.5, width: 27.1, clip: 43.4, start: 61.3 },
+    paper: { left: 37.6, top: 8.5, width: 27.1, clip: 43.4, start: 59.5 },
     strike: { topY: 46.2, originY: 62.4, centerX: 50.8, span: 13.2 },
     keys: { left: 29, top: 62.2, width: 46, height: 18.2 },
   },
@@ -83,4 +83,3 @@ export function getMachineStyle(id) {
 export function getDeskAsset(sceneId, machineId) {
   return `/assets/desk-${sceneId}-${machineId}.png`;
 }
-

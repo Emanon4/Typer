@@ -898,18 +898,16 @@ export function App() {
             </div>
 
             {strike.id > 0 && (
-              <img
+              <span
                 key={`desk-${strike.id}`}
                 className="desk-typebar-strike"
-                src={deskAsset}
                 style={{
                   clipPath: deskStrikeGeometry.clipPath,
                   "--bar-origin-x": `${deskStrikeGeometry.originX}%`,
                   "--bar-origin-y": `${deskStrikeGeometry.originY}%`,
+                  "--bar-strike-y": `${selectedDeskScene.strike.topY}%`,
                 }}
-                alt=""
                 aria-hidden="true"
-                draggable="false"
               />
             )}
 
@@ -1133,26 +1131,22 @@ export function App() {
         />
 
         {strike.id > 0 && (
-          <img
+          <span
             key={strike.id}
             className="typebar-strike"
-            src="/assets/typewriter-base.png"
             style={{
               clipPath: strikeGeometry.clipPath,
               "--bar-origin-x": `${strikeGeometry.originX}%`,
+              "--bar-origin-y": "69.2%",
+              "--bar-strike-y": "52.1%",
             }}
-            alt=""
             aria-hidden="true"
-            draggable="false"
           />
         )}
 
-        <img
+        <span
           className="return-lever-motion"
-          src="/assets/typewriter-base.png"
-          alt=""
           aria-hidden="true"
-          draggable="false"
         />
 
         <img

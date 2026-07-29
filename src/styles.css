@@ -91,8 +91,7 @@ button {
   transform: translate(-50%, -50%);
 }
 
-.desk-scene,
-.desk-typebar-strike {
+.desk-scene {
   position: absolute;
   inset: 0;
   display: block;
@@ -148,6 +147,42 @@ button {
   will-change: transform;
 }
 
+.desk-typebar-strike,
+.typebar-strike {
+  position: absolute;
+  inset: 0;
+  display: block;
+  background:
+    linear-gradient(
+      90deg,
+      #2a2118 0%,
+      #b08b4e 34%,
+      #efe0b6 49%,
+      #76562f 64%,
+      #1a1510 100%
+    );
+  filter:
+    drop-shadow(0 1px 0 rgba(255, 230, 174, 0.42))
+    drop-shadow(0 2px 2px rgba(0, 0, 0, 0.82));
+  pointer-events: none;
+}
+
+.desk-typebar-strike::after,
+.typebar-strike::after {
+  position: absolute;
+  top: calc(var(--bar-strike-y) - 0.35%);
+  left: 49.32%;
+  width: 1.36%;
+  height: 0.95%;
+  content: "";
+  background: linear-gradient(180deg, #c6a368, #43321f 58%, #16110d);
+  border: 1px solid rgba(27, 18, 11, 0.9);
+  border-radius: 18% 18% 8% 8%;
+  box-shadow:
+    inset 0 1px rgba(255, 230, 176, 0.45),
+    0 2px 3px rgba(0, 0, 0, 0.76);
+}
+
 .desk-stage.is-returning .desk-live-ink {
   transition-duration: 820ms;
   transition-timing-function: cubic-bezier(0.18, 0.86, 0.28, 1.03);
@@ -163,7 +198,6 @@ button {
 
 .desk-typebar-strike {
   z-index: 3;
-  filter: brightness(1.48) contrast(1.17);
   transform-origin: var(--bar-origin-x, 50%) var(--bar-origin-y, 60%);
   animation: typebar-hit 132ms cubic-bezier(0.17, 0.84, 0.28, 1) both;
 }
@@ -452,9 +486,7 @@ button {
   user-select: none;
 }
 
-.machine-base,
-.typebar-strike,
-.return-lever-motion {
+.machine-base {
   position: absolute;
   inset: 0;
   display: block;
@@ -548,8 +580,8 @@ button {
   position: absolute;
   top: 0;
   display: block;
-  width: 3.42cqw;
-  height: 3.35cqw;
+  width: 3.2cqw;
+  height: 3.05cqw;
   transform: translateY(var(--ink-lift)) rotate(var(--ink-rotate));
   transform-origin: 25% 60%;
   animation: ink-land 82ms steps(2, end) both;
@@ -595,7 +627,7 @@ button {
 
 .paper-bail {
   position: absolute;
-  top: 43.65%;
+  top: 44.1%;
   left: 25.5%;
   z-index: 4;
   display: block;
@@ -614,16 +646,28 @@ button {
 
 .typebar-strike {
   z-index: 5;
-  filter: brightness(1.48) contrast(1.18);
-  transform-origin: var(--bar-origin-x, 50%) 69.2%;
+  transform-origin: var(--bar-origin-x, 50%) var(--bar-origin-y, 69.2%);
   animation: typebar-hit 132ms cubic-bezier(0.17, 0.84, 0.28, 1) both;
 }
 
 .return-lever-motion {
+  position: absolute;
+  top: 47.2%;
+  left: 20.4%;
   z-index: 6;
+  display: block;
+  width: 11.6%;
+  height: 0.72%;
   opacity: 0;
-  clip-path: polygon(17.5% 42%, 34.5% 42%, 34.5% 60%, 17.5% 60%);
-  transform-origin: 30% 49%;
+  background: linear-gradient(180deg, #cfab6c, #5e4124 55%, #21160f);
+  border: 1px solid rgba(30, 20, 12, 0.88);
+  border-radius: 999px;
+  box-shadow:
+    inset 0 1px rgba(255, 232, 179, 0.42),
+    0 2px 4px rgba(0, 0, 0, 0.72);
+  pointer-events: none;
+  transform: rotate(-8deg);
+  transform-origin: 100% 50%;
 }
 
 .is-returning .return-lever-motion {
