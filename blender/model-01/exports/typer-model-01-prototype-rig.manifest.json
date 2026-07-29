@@ -1,0 +1,22 @@
+{
+  "model": "Typer Model 01 Prototype-Locked Rig",
+  "version": "0.2.0",
+  "units": "metres",
+  "visible_design_source": [
+    "public/assets/typewriter-base.png",
+    "public/assets/typewriter-with-paper.png"
+  ],
+  "exterior_rule": "Blender may articulate and rebuild the selected Typer exterior but may not redesign it.",
+  "scope": "one physically causal key-to-paper chain",
+  "cjk_contract": "The hidden digital type-slug adapter changes the glyph mask only at physical strike.",
+  "reference_collection_exported": false,
+  "timeline": {
+    "1": "idle",
+    "10": "H key bottom",
+    "14": "type slug at the fixed strike point and ribbon raised",
+    "20": "escapement advances the carriage one pitch",
+    "35": "return begins",
+    "50": "carriage home and paper advanced one line"
+  },
+  "next_gate": "Replace blockout parts with finished surfaces inside the frozen silhouette; do not add more keys yet."
+}

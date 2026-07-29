@@ -22,4 +22,14 @@ npm run build
 npm run test:sites
 ```
 
+## 机械建模
+
+第一台机器的可见外观冻结为 `public/assets/typewriter-base.png` 与 `public/assets/typewriter-with-paper.png`。Blender 只在这一轮廓内建立真实的按键、字杆、色带、字车、滚筒、压纸杆和稿纸运动，不再另选历史机型作为外观。
+
+当前模型先验证一条完整机械因果链，源码与可编辑文件在 `blender/model-01/`。重新生成：
+
+```bash
+blender --background --factory-startup --python blender/model-01/scripts/build_prototype_rig.py
+```
+
 视觉资产、生成提示和来源边界见 `ASSET_NOTES.md`，设计对照和交互验证见 `design-qa.md`。
