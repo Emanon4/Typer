@@ -803,6 +803,8 @@ button {
 
 .paper-box-drawer {
   position: relative;
+  display: flex;
+  flex-direction: column;
   z-index: 2;
   width: min(1080px, 94vw);
   max-height: min(88dvh, 760px);
@@ -1022,6 +1024,7 @@ button {
 
 .paper-options {
   display: grid;
+  min-height: 0;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 13px;
   overflow: auto;
@@ -1102,6 +1105,7 @@ button {
 }
 
 .paper-box-footer {
+  flex-shrink: 0;
   margin-top: 17px;
   color: rgba(226, 202, 159, 0.76);
   font-size: 11px;

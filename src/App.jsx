@@ -1053,7 +1053,8 @@ export function App() {
               <button aria-pressed={paperCategory === "postcard"} onClick={()=>setPaperCategory("postcard")}>明信片 <small>{PAPER_TEMPLATES.filter(paper=>paper.format==="postcard").length}</small></button>
             </div>
             <div className={`paper-options${paperCategory === "postcard" ? " postcard-options" : ""}`}>
-              {PAPER_TEMPLATES.filter(paper=>(paper.format || "sheet") === paperCategory).map((paper) => (
+              {PAPER_TEMPLATES.filter(paper=>(paper.format || "sheet") === paperCategory)
+                .sort((a,b)=>Number(Boolean(b.collection))-Number(Boolean(a.collection))).map((paper) => (
                 <button
                   className={`paper-option${
                     paper.id === paperId ? " selected" : ""
