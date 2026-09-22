@@ -4,6 +4,7 @@ import { createAudioEngine } from "./audioEngine";
 import { createImeInputAdapter } from "./imeInput";
 import { runStrikeCycle } from "./strikeCycle";
 import { pointerKeyAction } from "./pointerKeyboard";
+import { CHINESE_INK_FONT } from "./inkTypography";
 import { exportPaperPng } from "./exportPaper";
 import { PaperDocument as FinishedSheet, paperStyle } from "./PaperDocument";
 import { blankDocument, normalizeDocument, rollLengthMetres } from "./writingModel";
@@ -839,6 +840,7 @@ export function App() {
 
   useEffect(() => {
     audio().preload();
+    document.fonts?.load(`400 24px ${CHINESE_INK_FONT}`, "京华老宋体").catch(()=>{});
     const timer = window.setTimeout(focusWriter, 180);
     return () => window.clearTimeout(timer);
   }, []);

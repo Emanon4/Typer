@@ -3,6 +3,7 @@ import { getPaperLayout } from "./referenceGeometry";
 import { exportSlices } from "./writingModel";
 import { zipSync, strToU8 } from "fflate";
 import { seamlessRollTexture } from "./rollPaperTexture";
+import { CHINESE_INK_FONT } from "./inkTypography";
 
 const PAGE_WIDTH = 2480;
 
@@ -118,6 +119,12 @@ async function renderSlice(model,paper,texture,slice) {
 }
 
 export async function exportPaperPng(model,paper) {
+  // Export may start before the first Chinese glyph has appeared on screen.
+  // Await the actual embedded face so Canvas cannot silently use a fallback.
+  if (document.fonts) {
+    const loaded = await document.fonts.load(`400 24px ${CHINESE_INK_FONT}`, "京华老宋体");
+    if (!loaded.length) throw new Error("京华老宋体尚未载入，请稍后重试导出");
+  }
   await document.fonts?.ready;
   const texture=await loadImage(model.kind==="scroll"?await seamlessRollTexture(paper.asset):paper.asset),slices=exportSlices(model);
   let blob,fileName=makeFileName(paper);

@@ -26,6 +26,11 @@ test("Chinese screen and export metrics scale identically without faint impressi
   for(const key of ["fontSize","x","baseline"])assert.ok(Math.abs(exported[key]-live[key]*10)<1e-8);
   assert.equal(live.fontFamily,exported.fontFamily);
   assert.equal(live.fontWeight,exported.fontWeight);
+  assert.ok(live.fontFamily.startsWith('"Typer KingHwa OldSong"'));
+  assert.equal(live.fontWeight,400,"preserve the original font strokes without synthesized bold");
+  for (const character of ["，", "。", "！", "？", "；", "："]) {
+    assert.equal(inkTypography({character,seed:117},32,30.5).fontFamily,live.fontFamily);
+  }
 });
 
 test("paper-fiber wear is reproducible and changes with each physical impression",()=>{

@@ -1,0 +1,21 @@
+京華老宋体 / KingHwa_OldSong
+Font © Copyright 2022 TerryWang.All rights reserved.
+Version 2.002; April 13, 2024
+
+This repository distributes the original font file without modification.
+SHA256: recorded in docs/kinghwa-font-2026-09-22.md.
+
+Author: TerryWang（特里王 / 活字攷古）
+Author's publication: https://zhuanlan.zhihu.com/p/637491623
+Copyright statement mirror: https://github.com/cntrump/imitation_typeface_fonts
+
+The author's custom permission allows free commercial design use, including
+websites and embedding in software, and redistribution of the original font.
+It is not an open-source license. The font must not be sold as a standalone
+font file, modified and redistributed, or used for unlawful activities.
+Its historical glyph forms do not follow a current regional writing standard;
+the author excludes use in education or other settings requiring standard forms.
+The authorized Xiaomi font store is the author's stated exception to free use.
+
+The original copyright and author's permission remain applicable. This notice
+records those terms and does not relicense the font under the application license.

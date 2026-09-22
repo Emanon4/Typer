@@ -1,4 +1,12 @@
 @font-face {
+  font-family: "Typer KingHwa OldSong";
+  src: url("/assets/KingHwaOldSong-2.002.ttf") format("truetype");
+  font-display: swap;
+  font-style: normal;
+  font-weight: 400;
+}
+
+@font-face {
   font-family: "Special Elite";
   src: url("/assets/SpecialElite-Regular.ttf") format("truetype");
   font-display: swap;

@@ -1,4 +1,5 @@
-const CJK_PATTERN = /[\u2E80-\u30FF\u3400-\u9FFF\uF900-\uFAFF\u{20000}-\u{2FA1F}]/u;
+const CJK_PATTERN = /[\u2E80-\u30FF\u3400-\u9FFF\uF900-\uFAFF\uFF01-\uFF60\uFFE0-\uFFEE\u{20000}-\u{2FA1F}]/u;
+export const CHINESE_INK_FONT = '"Typer KingHwa OldSong"';
 
 // Shared by live vector text and the full-resolution exported impression.
 export function inkTypography(glyph, width, height) {
@@ -6,9 +7,9 @@ export function inkTypography(glyph, width, height) {
   const fontSize = cjk ? Math.min(height * .94, width * .94) : height * .8;
   return {
     fontFamily: cjk
-      ? '"Songti SC", "STSong", "Noto Serif CJK SC", serif'
+      ? `${CHINESE_INK_FONT}, "Songti SC", "STSong", serif`
       : '"Special Elite", "American Typewriter", "Courier New", monospace',
-    fontWeight: cjk ? 600 : 400,
+    fontWeight: 400,
     fontSize,
     x: width / 2,
     baseline: (height - fontSize) / 2 + fontSize * (cjk ? .79 : .88),
