@@ -46,9 +46,12 @@ test("every separate typebar returns to its own slot and converges on one strike
   assert.equal(strikeTravel(132), 0);
 });
 
-test("Chinese gets full-page capacity and saved unversioned ink retains its compact layout", () => {
+test("English-first and Chinese-first sheets use the same full-page writing scale", () => {
   assert.equal(layoutForFirstCharacter("中"), "compact");
-  assert.equal(layoutForFirstCharacter("A"), "reference");
+  assert.equal(layoutForFirstCharacter("A"), "compact");
+  assert.equal(layoutForFirstCharacter(" "), "compact");
+  assert.equal(layoutForFirstCharacter("！"), "compact");
+  assert.equal(getPaperLayout({}).id,"compact");
   assert.equal(getPaperLayout({lines:[{glyphs:[{character:"A"}]}]}).id, "compact");
   assert.equal(getPaperLayout({layoutId:"compact"}).maxLines, 33);
 });

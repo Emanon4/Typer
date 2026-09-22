@@ -1,6 +1,7 @@
 // Measurements are in the supplied video's 1280 × 1024 logical frame.
 // These are working mechanical parts, not regions cut out of a machine image.
 import { STRIKE_CONTACT_MS, ESCAPEMENT_START_MS, STRIKE_DURATION_MS } from "./typewriterConfig.js";
+import { getPaperTemplate } from "./paperTemplates.js";
 export const FRAME = { width: 1280, height: 1024 };
 export const STRIKE = { x: 640, y: 504 };
 export const PAPER = { left: 403, top: 419, width: 474, height: 474 * 297 / 210 };
@@ -81,17 +82,19 @@ export function strikeTravel(elapsed, contact = STRIKE_CONTACT_MS, release = ESC
   return (1 - t) ** 2;
 }
 
-const CJK = /[\u2e80-\u9fff\uf900-\ufaff\u{20000}-\u{2fa1f}]/u;
-export function layoutForFirstCharacter(character) {
-  return CJK.test(character) ? "compact" : "reference";
-}
+export function layoutForFirstCharacter() { return "compact"; }
+
+const paperLayouts = new Map();
 
 export function getPaperLayout(model) {
-  // Existing saved drafts retain their compact layout. New English sheets use
-  // the reference's large monospaced type; Chinese starts a 33-line A4 page.
-  const id = model?.layoutId || (model?.lines?.some(line => line.glyphs.length) ? "compact" : "reference");
+  // A new sheet has one writing scale regardless of its first character.
+  // Saved reference layouts keep their line positions and physical feed.
+  const id = model?.layoutId || "compact";
   const compact = id === "compact";
   const postcard = model?.paperFormat === "postcard" && model?.kind !== "scroll";
+  const paper = getPaperTemplate(model?.paperId);
+  const key = `${id}:${postcard}:${model?.kind === "scroll"}:${paper.id}`;
+  if (paperLayouts.has(key)) return paperLayouts.get(key);
   const paperHeight = postcard ? PAPER.width * 105 / 148 : PAPER.height;
   const trackWidth = 92;
   const trackPx = PAPER.width * trackWidth / 100;
@@ -104,9 +107,23 @@ export function getPaperLayout(model) {
   const feed = linePitch * trackPx / paperHeight;
   const bailY = compact ? activeTop - (linePitch * trackPx / 100 - glyphPx) / 2 : 483;
   const maxLines = model?.kind === "scroll" ? Infinity : postcard ? Math.floor((paperHeight - (activeTop - PAPER.top) - glyphPx - 24) / (linePitch * trackPx / 100)) + 1 : compact ? 33 : Math.floor((PAPER.height * (1 - start / 100) - glyphPx) / (linePitch * trackPx / 100)) + 1;
-  return { id, paperHeight, postcard, maxUnits: compact ? 26 : 28, maxLines, trackLeft: 4, trackWidth,
+  const layout = { id, paperHeight, postcard, maxUnits: compact ? 26 : 28, maxLines, trackLeft: 4, trackWidth,
     glyphWidth, glyphHeight, linePitch, start, feed, bailY, bailHeight: compact ? 2.6 : 8,
     glyphStart: compact ? 8 : 5.5, glyphRange: compact ? 84 : 89 };
+  if (paper.printArea && !postcard && model?.kind !== "scroll") {
+    // Margins belong to the saved paper. Preserve the physical type pitch and
+    // strike height; only the carriage stops and the last writable row change.
+    const { left, right, bottom } = paper.printArea;
+    const unitPitch = layout.glyphRange / layout.maxUnits;
+    const available = (right - left) / trackWidth * 100;
+    layout.glyphStart = (left - layout.trackLeft) / trackWidth * 100;
+    layout.maxUnits = Math.floor((available - glyphWidth - .3) / unitPitch);
+    layout.glyphRange = layout.maxUnits * unitPitch;
+    const inkHeight = glyphPx / paperHeight * 100;
+    layout.maxLines = Math.floor((bottom - start - inkHeight - .3) / feed) + 1;
+  }
+  paperLayouts.set(key, layout);
+  return layout;
 }
 
 export function referenceCarriageOffset(cursor, layout) {

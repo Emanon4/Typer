@@ -8,3 +8,7 @@ createRoot(document.getElementById("root")).render(
     <App />
   </React.StrictMode>,
 );
+
+if (import.meta.env.DEV && new URLSearchParams(location.search).has("profile")) {
+  import("./dev/typingDiagnostics.js").then(({mountTypingDiagnostics})=>mountTypingDiagnostics());
+}

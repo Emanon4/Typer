@@ -1,4 +1,4 @@
-import { useId, useMemo } from "react";
+import { memo, useId, useMemo, useLayoutEffect, useRef } from "react";
 import { MAX_LINE_UNITS, GLYPH_START_PERCENT, GLYPH_RANGE_PERCENT, GLYPH_WIDTH_CQW, GLYPH_HEIGHT_CQW } from "./typewriterConfig";
 import { inkImpression } from "./inkTypography";
 
@@ -38,7 +38,7 @@ export function paintInkGlyph(canvas, glyph, options = {}) {
   context.fillRect(0,0,cssWidth,cssHeight);
 }
 
-export function InkGlyph({ glyph, final = false, layout }) {
+function VectorInkGlyph({ glyph, final = false, layout }) {
   const width = (layout?.glyphWidth ?? GLYPH_WIDTH_CQW) * 100;
   const height = (layout?.glyphHeight ?? GLYPH_HEIGHT_CQW) * 100;
   const impression=useMemo(()=>inkImpression(glyph,width,height),[glyph.character,glyph.seed,width,height]);
@@ -66,3 +66,42 @@ export function InkGlyph({ glyph, final = false, layout }) {
     </span>
   );
 }
+
+// Permanent ink does not need a live SVG mask on every compositor frame.
+// Rasterize once at the actual device resolution, then repaint on resize/font
+// load. Export keeps using the same impression at full print resolution.
+const inkCanvases = new Map();
+let inkResizeObserver;
+function watchInk(canvas, paint) {
+  if (!inkResizeObserver) {
+    inkResizeObserver = new ResizeObserver(entries => {
+      for (const entry of entries) inkCanvases.get(entry.target)?.();
+    });
+    window.addEventListener("resize", () => inkCanvases.forEach(redraw => redraw()));
+    document.fonts?.addEventListener("loadingdone", () => inkCanvases.forEach(redraw => redraw()));
+  }
+  inkCanvases.set(canvas, paint);
+  try { inkResizeObserver.observe(canvas, {box:"device-pixel-content-box"}); }
+  catch { inkResizeObserver.observe(canvas); }
+  paint();
+  return () => { inkResizeObserver.unobserve(canvas); inkCanvases.delete(canvas); };
+}
+
+function RasterInkGlyph({glyph, layout}) {
+  const ref=useRef(null);
+  useLayoutEffect(() => {
+    const canvas=ref.current;
+    return watchInk(canvas, () => {
+      const {width,height}=canvas.getBoundingClientRect();
+      if(width && height) paintInkGlyph(canvas,glyph,{cssWidth:width,cssHeight:height,ratio:window.devicePixelRatio||1});
+    });
+  }, [glyph,layout]);
+  return <span className="ink-glyph" style={{left:`${layout.glyphStart+(glyph.x/layout.maxUnits)*layout.glyphRange}%`}}>
+    <canvas ref={ref} className="ink-vector" aria-hidden="true" />
+    <span className="ink-accessible">{glyph.character === " " ? "\u00a0" : glyph.character}</span>
+  </span>;
+}
+
+export const InkGlyph=memo(function InkGlyph(props) {
+  return props.final ? <VectorInkGlyph {...props}/> : <RasterInkGlyph {...props}/>;
+});

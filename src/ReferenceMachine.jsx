@@ -225,7 +225,40 @@ export function drawModelCover(ctx, finish, machine = getMachineModel()) {
   ctx.restore();
 }
 
-export function drawBody(ctx, { activeKey = "", travel = 0, lane = 0, stampCount = 0, finish = getMachineVariant(), machine = getMachineModel() }) {
+const bodyPaintCaches = new WeakMap();
+let fontRevision = 0;
+if (typeof document !== "undefined") document.fonts?.addEventListener("loadingdone", () => {fontRevision++;});
+
+function bodyPaintCache(ctx, finish, machine) {
+  const signature=`${ctx.canvas.width}:${ctx.canvas.height}:${finish.id}:${machine.id}:${fontRevision}`;
+  let cache=bodyPaintCaches.get(ctx);
+  if(cache?.signature!==signature) {
+    cache={signature,parts:new Map()};
+    bodyPaintCaches.set(ctx,cache);
+  }
+  return cache;
+}
+
+// Cache independently rendered stationary parts at the destination pixel grid.
+// Moving rods and depressed keys are still drawn once, in their original order.
+function cachedPart(ctx, cache, name, bounds, paint) {
+  let part=cache.parts.get(name);
+  if(!part) {
+    const {a:sx,d:sy}=ctx.getTransform();
+    const x=Math.floor(bounds.x*sx)/sx, y=Math.floor(bounds.y*sy)/sy;
+    const canvas=document.createElement("canvas");
+    canvas.width=Math.ceil((bounds.x+bounds.width-x)*sx);
+    canvas.height=Math.ceil((bounds.y+bounds.height-y)*sy);
+    const surface=canvas.getContext("2d");
+    surface.setTransform(sx,0,0,sy,-x*sx,-y*sy);
+    paint(surface);
+    part={canvas,x,y,width:canvas.width/sx,height:canvas.height/sy};
+    cache.parts.set(name,part);
+  }
+  ctx.drawImage(part.canvas,part.x,part.y,part.width,part.height);
+}
+
+function drawChassis(ctx, finish, machine) {
   ctx.save();
   if(machine.id === "classic") {
   // Keyboard bed and cast chassis: the silhouettes are measured in the frame.
@@ -248,6 +281,28 @@ export function drawBody(ctx, { activeKey = "", travel = 0, lane = 0, stampCount
   ctx.font='15px Georgia, "Times New Roman", serif';ctx.textAlign="center";ctx.fillStyle=finish.id === "ivory" ? finish.legend : finish.metal[1];
   ctx.fillText("T Y P E R",640,578);
   } else drawModelChassis(ctx,finish,machine);
+  ctx.restore();
+}
+
+function drawForeground(ctx,finish,machine) {
+  ctx.save();
+  drawBasket(ctx,finish);
+  drawModelCover(ctx,finish,machine);
+  drawGuide(ctx,finish);
+  if(machine.id === "classic") {
+    const front=gradient(ctx,0,921,0,968,[[0,finish.front[0]],[.22,finish.front[1]],[1,finish.front[2]]]);
+    roundRect(ctx,250,922,780,46,13,front,"rgba(182,157,91,.08)");
+    ageSurface(ctx,250,922,780,46,.65);
+    line(ctx,[[273,959],[425,959]],`${finish.metal[1]}77`,.75);
+    line(ctx,[[855,959],[1007,959]],`${finish.metal[1]}77`,.75);
+  }
+  ctx.restore();
+}
+
+export function drawBody(ctx, { activeKey = "", travel = 0, lane = 0, stampCount = 0, finish = getMachineVariant(), machine = getMachineModel() }) {
+  const cache=bodyPaintCache(ctx,finish,machine);
+  ctx.save();
+  cachedPart(ctx,cache,"chassis",{x:200,y:520,width:890,height:490},surface=>drawChassis(surface,finish,machine));
   // The reference fan has eight independently articulated rods on each side.
   // Draw the rising member only once, in front of the ribbon at contact.
   TYPEBARS.forEach(bar=>{if(bar.index!==lane||travel<=.02)drawRod(ctx,bar.index,0);});
@@ -261,18 +316,11 @@ export function drawBody(ctx, { activeKey = "", travel = 0, lane = 0, stampCount
   // never pop through the front cover, including partial lift/return frames.
   if(travel>.02)drawRod(ctx,lane,travel);
   drawSpool(ctx,486,stampCount*.032,finish);drawSpool(ctx,794,-stampCount*.032,finish);
-  drawBasket(ctx,finish);
-  drawModelCover(ctx,finish,machine);
-  drawGuide(ctx,finish);
-  // The base is behind the space bar, not a second copy of the machine image.
-  if(machine.id === "classic") {
-    const front=gradient(ctx,0,921,0,968,[[0,finish.front[0]],[.22,finish.front[1]],[1,finish.front[2]]]);
-    roundRect(ctx,250,922,780,46,13,front,"rgba(182,157,91,.08)");
-    ageSurface(ctx,250,922,780,46,.65);
-    line(ctx,[[273,959],[425,959]],`${finish.metal[1]}77`,.75);
-    line(ctx,[[855,959],[1007,959]],`${finish.metal[1]}77`,.75);
-  }
-  getModelKeys(machine).forEach(key=>drawKey(ctx,key,key.code===activeKey?Math.max(.75,travel):0,finish,machine));
+  cachedPart(ctx,cache,"foreground",{x:200,y:480,width:890,height:530},surface=>drawForeground(surface,finish,machine));
+  getModelKeys(machine).forEach(key=>{
+    if(key.code===activeKey) drawKey(ctx,key,Math.max(.75,travel),finish,machine);
+    else cachedPart(ctx,cache,`key:${key.code}`,{x:key.x-key.width/2-10,y:key.y-key.height/2-10,width:key.width+20,height:key.height+30},surface=>drawKey(surface,key,0,finish,machine));
+  });
   ctx.restore();
 }
 
@@ -356,7 +404,11 @@ function useMechanicalCanvas(ref, draw, dependencies, animateFor=0) {
       const ctx=canvas.getContext("2d");
       ctx.setTransform(1,0,0,1,0,0);ctx.clearRect(0,0,canvas.width,canvas.height);
       ctx.setTransform(canvas.width/FRAME.width,0,0,canvas.height/FRAME.height,0,0);
+      const drawStart = performance.now();
       draw(ctx,now-start);
+      if (import.meta.env.DEV && new URLSearchParams(location.search).has("profile")) {
+        document.dispatchEvent(new CustomEvent("typer:canvas-profile", { detail:{ms:performance.now()-drawStart} }));
+      }
       if(now-start<animateFor)frame=requestAnimationFrame(paint);
     }
     const resize=new ResizeObserver(()=>paint(performance.now()));resize.observe(canvas);

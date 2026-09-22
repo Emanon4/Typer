@@ -107,11 +107,11 @@ function loadDraft() {
   try {
     const parsed = JSON.parse(readMigratedValue(STORAGE_KEY, LEGACY_STORAGE_KEY));
     if (!parsed || !Array.isArray(parsed.lines) || !parsed.lines.length) {
-      return blankModel();
+      return { ...blankModel(), paperId: loadPaperTemplateId() };
     }
-    return normalizeDocument(parsed);
+    return normalizeDocument({ ...parsed, paperId: parsed.paperId || loadPaperTemplateId() });
   } catch {
-    return blankModel();
+    return { ...blankModel(), paperId: loadPaperTemplateId() };
   }
 }
 
@@ -190,7 +190,7 @@ export function App() {
   const processingRef = useRef(false);
   const cycleRef = useRef(0);
   const glyphIdRef = useRef(Date.now());
-  const timersRef = useRef([]);
+  const timersRef = useRef(new Set());
   const savePendingRef = useRef(Promise.resolve());
   const paperRef = useRef(paperId);
   paperRef.current=paperId;
@@ -201,7 +201,7 @@ export function App() {
   const selectedVariant = getMachineVariant(variantId);
   const selectedMachine = getMachineModel(machineModelId);
   function rememberTimer(timer) {
-    timersRef.current.push(timer);
+    timersRef.current.add(timer);
     return timer;
   }
 
@@ -216,6 +216,8 @@ export function App() {
   }
 
   function commitModel(nextModel, savedModel = nextModel) {
+    nextModel = { ...nextModel, paperId: paperRef.current };
+    savedModel = { ...savedModel, paperId: paperRef.current };
     modelRef.current = nextModel;
     if(savedModel.kind === "scroll" || savedModel.kind === "letter") {
       savePendingRef.current=saveDocument(savedModel,{paperId:paperRef.current}).catch(()=>{setStatus("本机存储空间不足，请先导出稿件；当前内容仍在纸上");});
@@ -225,7 +227,8 @@ export function App() {
 
   function delay(milliseconds) {
     return new Promise((resolve) => {
-      rememberTimer(window.setTimeout(resolve, milliseconds));
+      const timer=window.setTimeout(()=>{timersRef.current.delete(timer);resolve();},milliseconds);
+      rememberTimer(timer);
     });
   }
 
@@ -635,9 +638,11 @@ export function App() {
       await savePendingRef.current;
       const current = modelRef.current;
       const nextFormat = nextPaper.format || "sheet";
-      const changedShape = nextFormat !== (current.paperFormat || "sheet") || (current.kind === "scroll" && nextFormat === "postcard");
-      let next = { ...current, paperFormat: nextFormat };
-      if (changedShape) {
+      const changedGeometry = nextFormat !== (current.paperFormat || "sheet") ||
+        JSON.stringify(nextPaper.printArea) !== JSON.stringify(getPaperTemplate(paperRef.current).printArea) ||
+        (current.kind === "scroll" && (nextFormat === "postcard" || nextPaper.printArea));
+      let next = { ...current, paperId: nextPaper.id, paperFormat: nextFormat };
+      if (changedGeometry) {
         const ink = current.lines.some(row => row.glyphs.length);
         if (ink) {
           if (current.kind === "letter") await saveDocument(current, { paperId: paperRef.current, all: true });
@@ -648,7 +653,7 @@ export function App() {
         if (kind === "sheet") localStorage.setItem("typer-writing-mode-v1", "sheet");
       }
       installDocument(next, nextPaper.id);
-      setStatus(`已装入「${nextPaper.name}」${changedShape && hasInk ? "，原稿已收好" : ""}`);
+      setStatus(`已装入「${nextPaper.name}」${changedGeometry && hasInk ? "，原稿已收好" : ""}`);
       play("space");
     } catch { setStatus("原稿暂时无法收好，请先导出后再换纸"); }
     finally { setPaperChanging(false); }
@@ -937,9 +942,6 @@ export function App() {
           {model.kind==="scroll"?` · 已写 ${rollLengthMetres(model).toFixed(2)} 米`:hasInk&&!model.pageFull?` · 第 ${model.activeLine+1} 行`:""}
         </div>
 
-        <p className="instruction-line">
-          {model.kind==="scroll"?"凯鲁亚克 · 长卷没有页末，想停时再收卷":model.kind==="letter"?`书信 · ${model.recipient?`致 ${model.recipient}`:"写完后折纸封缄"}`:model.paperFormat==="postcard"?`${selectedPaper.name} · 一面风景，一面你的话`:"A4 稿纸 · 系统中文输入法 · 回车换行 · 退格只移动字车"}
-        </p>
       </section>
 
           {workbenchOpen && (
@@ -1047,8 +1049,8 @@ export function App() {
             </header>
             <p className="paper-box-intro">{paperCategory === "postcard" ? "一面收藏风景，一面写下问候。换成明信片时，当前稿件会先收好。" : "挑一张合适的纸，让今天的话慢慢落下来。"}</p>
             <div className="paper-category" aria-label="纸品分类">
-              <button aria-pressed={paperCategory === "sheet"} onClick={()=>setPaperCategory("sheet")}>稿纸与信笺 <small>5</small></button>
-              <button aria-pressed={paperCategory === "postcard"} onClick={()=>setPaperCategory("postcard")}>明信片 <small>6</small></button>
+              <button aria-pressed={paperCategory === "sheet"} onClick={()=>setPaperCategory("sheet")}>稿纸与信笺 <small>{PAPER_TEMPLATES.filter(paper=>paper.format!=="postcard").length}</small></button>
+              <button aria-pressed={paperCategory === "postcard"} onClick={()=>setPaperCategory("postcard")}>明信片 <small>{PAPER_TEMPLATES.filter(paper=>paper.format==="postcard").length}</small></button>
             </div>
             <div className={`paper-options${paperCategory === "postcard" ? " postcard-options" : ""}`}>
               {PAPER_TEMPLATES.filter(paper=>(paper.format || "sheet") === paperCategory).map((paper) => (

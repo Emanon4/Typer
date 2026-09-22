@@ -60,6 +60,12 @@ export const PAPER_TEMPLATES = [
     fileLabel: "蓝线信纸",
   },
   ...[
+    { id: "florentine", name: "佛罗伦萨花笺", era: "石榴与雕花边饰", description: "石榴枝落在纸页上方，细线与卷叶围出一封郑重的信。", base: "#f5eddf", printArea: { left: 12, right: 88, bottom: 80 } },
+    { id: "bauhaus", name: "构成练习", era: "几何套色印刷", description: "钴蓝、朱红与赭黄的几何构成，为大段留白添一点明快。", base: "#f7f3ea", printArea: { left: 12, right: 91, bottom: 84 } },
+    { id: "terracotta", name: "地中海弧线", era: "陶土与橄榄枝", description: "陶土拱门倚着鼠尾草色山丘，像一封带着南方日光的来信。", base: "#f3ebdc", printArea: { left: 12, right: 90, bottom: 74 } },
+    { id: "iris", name: "鸢尾标本笺", era: "植物铜版画", description: "紫色鸢尾沿左侧舒展，将纸页右方留给慢慢写下的话。", base: "#f5eee0", printArea: { left: 25, right: 88, bottom: 94 } },
+  ].map(paper => ({ ...paper, collection: "selected-2026-09", asset: `assets/stationery/${paper.id}.webp`, backgroundSize: "cover", backgroundPosition: "center", fileLabel: paper.name })),
+  ...[
     { id: "kyoto", name: "京都春水", era: "木版风景明信片", description: "樱枝垂向河面，小桥与远处屋檐留在淡靛色春光里。", accent: "#6a737c" },
     { id: "venice", name: "水城晨曦", era: "铜版旅行明信片", description: "拱桥、贡多拉与清晨水光，一封来自威尼斯的问候。", accent: "#677b86" },
     { id: "botanical", name: "鸢尾花事", era: "植物图谱明信片", description: "旧植物图谱中的鸢尾与蕨叶，寄走一小片春天。", accent: "#73765d" },

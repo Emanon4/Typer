@@ -76,7 +76,7 @@ function letterSnapshot(input) {
   const paper = PAPER_TEMPLATES.find(p => p.id === input.paperId);
   if (!paper) throw fail("未识别的信笺");
   const paperFormat = paper.format === "postcard" ? "postcard" : "sheet";
-  const layout = getPaperLayout({ ...model, paperFormat });
+  const layout = getPaperLayout({ ...model, paperId: paper.id, paperFormat });
   if (model.lines.length > layout.maxLines) throw fail("信笺超过一张纸的容量");
   let count = 0;
   const lines = model.lines.map((row, index) => {
@@ -117,6 +117,7 @@ function letterSnapshot(input) {
     stampId: input.stampId,
     model: {
       kind: "letter",
+      paperId: paper.id,
       paperFormat,
       layoutId: layout.id,
       activeLine: lines.length - 1,

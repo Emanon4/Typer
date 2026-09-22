@@ -43,3 +43,14 @@ test("paper-fiber wear is reproducible and changes with each physical impression
   assert.equal(live.spread*2,exported.spread);
   assert.deepEqual(live.wear.map(x=>x.opacity),exported.wear.map(x=>x.opacity));
 });
+
+test("English ink stays within its type slug on legacy tall rows and exports at the same scale",()=>{
+  const glyph={character:"A",seed:119};
+  const compact=inkTypography(glyph,32,30.5),legacy=inkTypography(glyph,32,59);
+  assert.ok(legacy.fontSize<=compact.fontSize*1.05,"legacy rows must not make English almost twice as large");
+  for (const height of [30.5,59]) {
+    const live=inkTypography(glyph,32,height),print=inkTypography(glyph,320,height*10);
+    assert.ok(Math.abs(print.fontSize-live.fontSize*10)<1e-8);
+    assert.ok(live.fontSize<=32*.8,"printed letters fit their physical slug width");
+  }
+});

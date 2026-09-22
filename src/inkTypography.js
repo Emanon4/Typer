@@ -4,7 +4,7 @@ export const CHINESE_INK_FONT = '"Typer KingHwa OldSong"';
 // Shared by live vector text and the full-resolution exported impression.
 export function inkTypography(glyph, width, height) {
   const cjk = CJK_PATTERN.test(glyph.character);
-  const fontSize = cjk ? Math.min(height * .94, width * .94) : height * .8;
+  const fontSize = cjk ? Math.min(height * .94, width * .94) : Math.min(height, width) * .8;
   return {
     fontFamily: cjk
       ? `${CHINESE_INK_FONT}, "Songti SC", "STSong", serif`

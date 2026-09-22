@@ -12,6 +12,32 @@ import { pointerKeyAction } from "../src/pointerKeyboard.js";
 import { createPostOffice } from "../server/post-office.mjs";
 
 const close = (a, b) => assert.ok(Math.abs(a - b) < 1e-8, `${a} != ${b}`);
+test("the four selected stationery designs keep a full page of ink clear of their art", () => {
+  const papers = PAPER_TEMPLATES.filter(paper => paper.collection === "selected-2026-09");
+  assert.deepEqual(papers.map(paper => paper.id), ["florentine", "bauhaus", "terracotta", "iris"]);
+  for (const paper of papers) for (const layoutId of ["compact", "reference"]) {
+    assert.ok(existsSync(new URL(`../public/${paper.asset.replace(/^\//, "")}`, import.meta.url)));
+    const model = {kind:"letter", paperId:paper.id, layoutId};
+    const layout = getPaperLayout(model), original = getPaperLayout({layoutId});
+    close(layout.glyphHeight, original.glyphHeight);
+    close(layout.linePitch, original.linePitch);
+    close(layout.glyphRange/layout.maxUnits, original.glyphRange/original.maxUnits);
+    const left = layout.trackLeft + layout.trackWidth * layout.glyphStart / 100;
+    const right = left + layout.trackWidth * (layout.glyphRange + layout.glyphWidth + .2) / 100;
+    assert.ok(left >= paper.printArea.left - 1e-8);
+    assert.ok(right < paper.printArea.right);
+    const glyphHeight = PAPER.width * layout.trackWidth * layout.glyphHeight / 10000;
+    for (let i=0; i<layout.maxLines; i++) {
+      const top = layout.start + i * layout.feed;
+      assert.ok(top + glyphHeight / layout.paperHeight * 100 + .2 < paper.printArea.bottom);
+      close(PAPER.top + (top-i*layout.feed)*layout.paperHeight/100 + glyphHeight/2, STRIKE.y);
+    }
+    assert.ok(layout.maxLines >= (layoutId === "compact" ? 23 : 7));
+    const slice = exportSlices({...model,lines:Array.from({length:layout.maxLines},()=>({glyphs:[]}))})[0];
+    assert.equal(slice.last, layout.maxLines);
+    close(slice.top / 2480, layout.paperHeight * layout.start / 100 / PAPER.width);
+  }
+});
 test("every collectible and postcard has a distinct, shipped illustration", () => {
   assert.equal(STAMPS.length, 12);
   assert.equal(new Set(STAMPS.map(stamp => stamp.id)).size, 12);
@@ -95,5 +121,17 @@ test("mailed postcards preserve their art, format, stamp and ink; forged capacit
     const forged = {...payload, nonce:"postcard-capacity-nonce-0002", model:{...payload.model, paperFormat:"sheet", lines:Array.from({length:limit+1},()=>row)}};
     assert.equal((await send("/letters", forged, a.cookie)).status, 400);
     assert.equal((await send("/letters", {...payload, stampId:"invented"}, a.cookie)).status, 400);
+    const illustrated = {...payload, nonce:"stationery-iris-nonce-0003", paperId:"iris", model:{...payload.model, paperId:"reference-ivory"}};
+    const posted = await send("/letters", illustrated, a.cookie);
+    assert.equal(posted.status, 201);
+    const received = await send(`/letters/${posted.data.letter.id}/open`, {}, b.cookie);
+    assert.equal(received.data.letter.paperId, "iris");
+    assert.equal(received.data.letter.model.paperId, "iris", "trusted selected stock overrides forged model paper");
+    assert.equal(received.data.letter.model.lines[0].glyphs[0].seed, 517);
+    const irisLayout = getPaperLayout(received.data.letter.model);
+    const tooLong = {...illustrated, nonce:"stationery-iris-overflow-0004", model:{...illustrated.model,lines:Array.from({length:irisLayout.maxLines+1},()=>row)}};
+    assert.equal((await send("/letters", tooLong, a.cookie)).status, 400);
+    const tooWide = {...illustrated, nonce:"stationery-iris-overflow-0005", model:{...illustrated.model,lines:[{cursor:26,glyphs:[{...row.glyphs[0],x:26}]}]}};
+    assert.equal((await send("/letters", tooWide, a.cookie)).status, 400);
   } finally { office.close(); rmSync(dir, {recursive:true, force:true}); }
 });
