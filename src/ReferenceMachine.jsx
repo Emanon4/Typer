@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import { InkGlyph } from "./InkGlyph";
 import { FRAME, PAPER, PAPER_MOUTH_Y, PAPER_EJECT_OFFSET_PERCENT, GUIDE_TOP, GUIDE_BOTTOM, RIBBON_WIDTH, RETURN_LEVER, returnLeverAngle, ribbonPosition, paperFeedOffset, TYPEBARS, typebarPosition, strikeTravel, getPaperLayout, paperLayoutStyle, referenceCarriageOffset } from "./referenceGeometry";
 import { getMachineVariant } from "./machineVariants";
@@ -366,8 +366,9 @@ function useMechanicalCanvas(ref, draw, dependencies, animateFor=0) {
   },dependencies);
 }
 
-export function ReferenceMachine({ model, compositionText, activeKey, strike, returning, ejecting, paperVisualStyle, variant = getMachineVariant(), machine = getMachineModel(), inspection, children }) {
+export function ReferenceMachine({ model, compositionText, activeKey, strike, returning, ejecting, paperVisualStyle, variant = getMachineVariant(), machine = getMachineModel(), inspection, onKeyPress, shiftLatched = false, children }) {
   const bodyRef=useRef(null),carriageRef=useRef(null),paperNode=useRef(null);
+  const [pointerKey, setPointerKey] = useState("");
   const layout=getPaperLayout(model),active=model.lines[model.activeLine];
   const lane=inspection?.lane ?? strike.hash%TYPEBARS.length;
   const strikeStarted=useRef({id:0,time:0});
@@ -377,8 +378,8 @@ export function ReferenceMachine({ model, compositionText, activeKey, strike, re
   const stampCount=model.lines.reduce((sum,row)=>sum+row.glyphs.length,0);
   useMechanicalCanvas(bodyRef,(ctx)=>{
     const elapsed=performance.now()-strikeStarted.current.time;
-    drawBody(ctx,{activeKey,travel:inspection?.travel ?? strikeTravel(elapsed),lane,stampCount,finish:variant,machine});
-  },[activeKey,strike.id,returning,stampCount,variant.id,machine.id,inspection],inspection?0:160);
+    drawBody(ctx,{activeKey:pointerKey||activeKey||(shiftLatched?"ShiftLeft":""),travel:inspection?.travel ?? strikeTravel(elapsed),lane,stampCount,finish:variant,machine});
+  },[pointerKey,shiftLatched,activeKey,strike.id,returning,stampCount,variant.id,machine.id,inspection],inspection?0:160);
   useMechanicalCanvas(carriageRef,(ctx)=>{
     const progress=returning?Math.min(1,(performance.now()-feedStarted.current.time)/820):1;
     const turn=1-(1-progress)**3;
@@ -390,8 +391,8 @@ export function ReferenceMachine({ model, compositionText, activeKey, strike, re
   const textureStyle=useRollPaperStyle(paperVisualStyle,roll,(band?.first||0)*(band?.pitch||0)/PAPER.width);
   const first=band?.first||0;
   const visibleRows=roll?model.lines.slice(first,band.last+1):model.lines;
-  const paperHeight=band?.height||PAPER.height;
-  const rowStart=layout.start*PAPER.height/paperHeight;
+  const paperHeight=band?.height||layout.paperHeight;
+  const rowStart=layout.start*layout.paperHeight/paperHeight;
   const feed=roll?band.feed/paperHeight*100:paperFeedOffset(model,layout);
   useLayoutEffect(()=>{
     if(!roll||!returning||inspection||!paperNode.current)return;
@@ -406,8 +407,9 @@ export function ReferenceMachine({ model, compositionText, activeKey, strike, re
     <div className={`reference-rig${roll?" continuous-roll":""}`} style={{...paperLayoutStyle(layout),"--paper-mouth-bottom":`${100-PAPER_MOUTH_Y/FRAME.height*100}%`,"--paper-eject-offset":`${PAPER_EJECT_OFFSET_PERCENT}%`}} data-writing-kind={model.kind||"sheet"} data-machine-model={machine.id} data-variant={variant.id} data-inspection={inspection ? "true" : undefined} data-layout={layout.id} data-active-line={model.activeLine} data-cursor={active.cursor}>
       <div className="reference-carriage" style={{"--carriage-x":`${carriageX/FRAME.width*100}%`}}>
         <div className={`reference-paper-window${ejecting?" ejecting":""}`}>
-          <div ref={paperNode} className="paper-sheet reference-paper" style={{...textureStyle,...(roll?{height:`${paperHeight/FRAME.height*100}%`,transition:ejecting?undefined:"none"}:{}),"--paper-feed-y":`${feed}%`,...(inspection?.ejectionProgress !== undefined ? {transform:`translate3d(0,${feed+(PAPER_EJECT_OFFSET_PERCENT-feed)*inspection.ejectionProgress}%,0)`,opacity:1} : {})}}>
+          <div ref={paperNode} className={`paper-sheet reference-paper${layout.postcard?" postcard-back":""}`} style={{...textureStyle,height:`${paperHeight/FRAME.height*100}%`,...(roll?{transition:ejecting?undefined:"none"}:{}),"--paper-feed-y":`${feed}%`,...(inspection?.ejectionProgress !== undefined ? {transform:`translate3d(0,${feed+(PAPER_EJECT_OFFSET_PERCENT-feed)*inspection.ejectionProgress}%,0)`,opacity:1} : {})}}>
             <div className="paper-grain" />
+            {layout.postcard && <span className="postcard-heading" aria-hidden="true">POST CARD · TYPER</span>}
             <div className="live-ink">
               {visibleRows.map((row,index)=>row.glyphs.map(glyph=>(
                 <span className="live-glyph-row" data-line-index={index+first} style={{top:`calc(${rowStart}% + ${index*layout.linePitch}cqw)`}} key={glyph.id}>
@@ -421,6 +423,31 @@ export function ReferenceMachine({ model, compositionText, activeKey, strike, re
         <canvas className="reference-carriage-hardware" ref={carriageRef} aria-hidden="true" />
       </div>
       <canvas className="reference-machine" ref={bodyRef} aria-hidden="true" />
+      {onKeyPress && <div className="reference-keyboard" role="group" aria-label="可点按的打字机键盘">
+        {getModelKeys(machine).map(key => <button
+          key={key.code}
+          type="button"
+          className="reference-key-hit"
+          aria-label={key.code === "Space" ? "空格键" : key.code.startsWith("Shift") ? "换挡键 Shift" : `${key.label} 键`}
+          aria-pressed={key.code.startsWith("Shift") ? shiftLatched : undefined}
+          disabled={ejecting || Boolean(compositionText)}
+          style={{left:`${(key.x-key.width/2)/FRAME.width*100}%`,top:`${(key.y-key.height/2)/FRAME.height*100}%`,width:`${key.width/FRAME.width*100}%`,height:`${key.height/FRAME.height*100}%`}}
+          onPointerDown={event=>{
+            if (event.button !== 0) return;
+            event.preventDefault();event.stopPropagation();setPointerKey(key.code);
+            onKeyPress(key,event.shiftKey);
+          }}
+          onPointerUp={()=>setPointerKey("")}
+          onPointerLeave={()=>setPointerKey("")}
+          onPointerCancel={()=>setPointerKey("")}
+          onClick={event=>{
+            event.stopPropagation();
+            // Pointer presses fire at key-down. Keyboard/assistive activation
+            // still uses click, without printing twice on pointer release.
+            if (event.detail === 0) onKeyPress(key,event.shiftKey);
+          }}
+        />)}
+      </div>}
       {children}
     </div>
   );

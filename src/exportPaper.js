@@ -5,7 +5,6 @@ import { zipSync, strToU8 } from "fflate";
 import { seamlessRollTexture } from "./rollPaperTexture";
 
 const PAGE_WIDTH = 2480;
-const PAGE_HEIGHT = 3508;
 
 function loadImage(source) {
   return new Promise((resolve, reject) => {
@@ -78,9 +77,20 @@ async function renderSlice(model,paper,texture,slice) {
     const layout=getPaperLayout(model);
     const phase=slice.first*PAGE_WIDTH*layout.trackWidth*layout.linePitch/10000;
     for(let y=-(phase%textureHeight);y<slice.height;y+=textureHeight)context.drawImage(texture,0,y,PAGE_WIDTH,textureHeight);
-  } else drawCover(context, texture, PAGE_WIDTH, PAGE_HEIGHT, paper.backgroundPosition);
+  } else drawCover(context, texture, PAGE_WIDTH, slice.height, paper.backgroundPosition);
 
   const layout = getPaperLayout(model);
+  if (layout.postcard) {
+    context.strokeStyle = paper.accent || "#806b48";
+    context.globalAlpha = .5;
+    context.lineWidth = 1.5;
+    context.strokeRect(PAGE_WIDTH*.04, slice.height*.05, PAGE_WIDTH*.92, slice.height*.90);
+    context.fillStyle = context.strokeStyle;
+    context.font = `${PAGE_WIDTH*.019}px Georgia, serif`;
+    context.textAlign = "center";
+    context.fillText("POST CARD · TYPER", PAGE_WIDTH/2, slice.height*.13);
+    context.globalAlpha = 1;
+  }
   const copyWidth = PAGE_WIDTH * layout.trackWidth / 100;
   const copyLeft = PAGE_WIDTH * layout.trackLeft / 100;
   const copyTop = slice.top;
@@ -111,7 +121,16 @@ export async function exportPaperPng(model,paper) {
   await document.fonts?.ready;
   const texture=await loadImage(model.kind==="scroll"?await seamlessRollTexture(paper.asset):paper.asset),slices=exportSlices(model);
   let blob,fileName=makeFileName(paper);
-  if(slices.length===1)blob=await renderSlice(model,paper,texture,slices[0]);
+  if(model.paperFormat==="postcard" && paper.frontAsset && model.kind!=="scroll") {
+    const back=await renderSlice(model,paper,texture,slices[0]);
+    const art=await loadImage(paper.frontAsset);
+    const front=document.createElement("canvas"); front.width=PAGE_WIDTH; front.height=slices[0].height;
+    drawCover(front.getContext("2d"),art,front.width,front.height,"center");
+    const face=await canvasToBlob(front); front.width=front.height=1;
+    blob=new Blob([zipSync({"01-插画面.png":new Uint8Array(await face.arrayBuffer()),"02-文字面.png":new Uint8Array(await back.arrayBuffer())},{level:0})],{type:"application/zip"});
+    fileName=fileName.replace(/\.png$/,"-双面.zip");
+  }
+  else if(slices.length===1)blob=await renderSlice(model,paper,texture,slices[0]);
   else {
     const files={};
     for(const [i,slice] of slices.entries()) {

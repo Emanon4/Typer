@@ -91,6 +91,8 @@ export function getPaperLayout(model) {
   // the reference's large monospaced type; Chinese starts a 33-line A4 page.
   const id = model?.layoutId || (model?.lines?.some(line => line.glyphs.length) ? "compact" : "reference");
   const compact = id === "compact";
+  const postcard = model?.paperFormat === "postcard" && model?.kind !== "scroll";
+  const paperHeight = postcard ? PAPER.width * 105 / 148 : PAPER.height;
   const trackWidth = 92;
   const trackPx = PAPER.width * trackWidth / 100;
   const glyphHeight = compact ? 3.05 : 5.9;
@@ -98,11 +100,11 @@ export function getPaperLayout(model) {
   const linePitch = compact ? 4.1 : 56 / trackPx * 100;
   const glyphPx = glyphHeight * trackPx / 100;
   const activeTop = STRIKE.y - glyphPx / 2;
-  const start = (activeTop - PAPER.top) / PAPER.height * 100;
-  const feed = linePitch * trackPx / PAPER.height;
+  const start = (activeTop - PAPER.top) / paperHeight * 100;
+  const feed = linePitch * trackPx / paperHeight;
   const bailY = compact ? activeTop - (linePitch * trackPx / 100 - glyphPx) / 2 : 483;
-  const maxLines = model?.kind === "scroll" ? Infinity : compact ? 33 : Math.floor((PAPER.height * (1 - start / 100) - glyphPx) / (linePitch * trackPx / 100)) + 1;
-  return { id, maxUnits: compact ? 26 : 28, maxLines, trackLeft: 4, trackWidth,
+  const maxLines = model?.kind === "scroll" ? Infinity : postcard ? Math.floor((paperHeight - (activeTop - PAPER.top) - glyphPx - 24) / (linePitch * trackPx / 100)) + 1 : compact ? 33 : Math.floor((PAPER.height * (1 - start / 100) - glyphPx) / (linePitch * trackPx / 100)) + 1;
+  return { id, paperHeight, postcard, maxUnits: compact ? 26 : 28, maxLines, trackLeft: 4, trackWidth,
     glyphWidth, glyphHeight, linePitch, start, feed, bailY, bailHeight: compact ? 2.6 : 8,
     glyphStart: compact ? 8 : 5.5, glyphRange: compact ? 84 : 89 };
 }

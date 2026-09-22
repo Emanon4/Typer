@@ -88,9 +88,10 @@ export function documentExcerpt(model) {
 export function exportSlices(model, maxHeight = 6000, width = 2480) {
   const layout = getPaperLayout(model),
     pitch = (width * layout.trackWidth * layout.linePitch) / 10000;
-  const top = (((width * 297) / 210) * layout.start) / 100;
+  const height = layout.postcard ? Math.round(width * 105 / 148) : 3508;
+  const top = (width * layout.paperHeight / PAPER.width) * layout.start / 100;
   if (model.kind !== "scroll")
-    return [{ first: 0, last: model.lines.length, height: 3508, top }];
+    return [{ first: 0, last: model.lines.length, height, top }];
   const capacity = Math.max(1, Math.floor((maxHeight - top - 120) / pitch));
   return Array.from(
     { length: Math.ceil(model.lines.length / capacity) },

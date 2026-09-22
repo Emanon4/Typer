@@ -9,9 +9,11 @@ export function paperStyle(paper) {
     "--paper-base": paper.base,
     "--paper-size": paper.backgroundSize,
     "--paper-position": paper.backgroundPosition,
+    "--postcard-accent": paper.accent || "#806b48",
   };
 }
 export function PaperDocument({ draft, paper }) {
+  const [front, setFront] = useState(false);
   const layout = getPaperLayout(draft),
     roll = draft.kind === "scroll";
   const textureStyle = useRollPaperStyle(paperStyle(paper), roll);
@@ -36,10 +38,11 @@ export function PaperDocument({ draft, paper }) {
     : draft.lines.length;
   const content = (
     <article
-      className={`final-sheet${roll ? " final-roll" : ""}`}
+      className={`final-sheet${roll ? " final-roll" : ""}${layout.postcard ? " postcard-back" : ""}`}
       style={{
         ...textureStyle,
         ...paperLayoutStyle(layout),
+        ...(layout.postcard ? { aspectRatio: "148 / 105" } : {}),
         ...(roll
           ? {
               height: Math.max(
@@ -51,6 +54,7 @@ export function PaperDocument({ draft, paper }) {
       }}
     >
       <div className="paper-grain" />
+      {layout.postcard && <span className="postcard-heading" aria-hidden="true">POST CARD · TYPER</span>}
       <div className="final-copy">
         {draft.lines.slice(first, last).map((line, i) => (
           <div
@@ -70,6 +74,10 @@ export function PaperDocument({ draft, paper }) {
       </div>
     </article>
   );
+  if (layout.postcard && paper.frontAsset) return <div className="postcard-document">
+    <button className="postcard-flip" onClick={()=>setFront(value=>!value)}>{front ? "翻回文字面" : "翻到风景面"} <span aria-hidden="true">↻</span></button>
+    {front ? <img className="postcard-front" src={paper.frontAsset} alt={`${paper.name}插画面`} /> : content}
+  </div>;
   return roll ? (
     <div
       className="roll-reader"

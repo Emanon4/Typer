@@ -3,4 +3,4 @@ export function publicAsset(path, base = import.meta.env?.BASE_URL || "/") {
   return `${base.replace(/\/*$/, "/")}${path.replace(/^\/+/, "")}`;
 }
 
-export const POST_AVAILABLE = import.meta.env?.MODE !== "pages";
+export const POST_API_ORIGIN = (import.meta.env?.VITE_POST_API_ORIGIN || "").replace(/\/+$/, "");

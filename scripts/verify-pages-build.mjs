@@ -19,6 +19,8 @@ for (const file of ["index.html", ...files.filter((name) => /\.(js|css)$/.test(n
 }
 if (!html.includes('/Typer/assets/')) throw new Error("Missing GitHub Pages base");
 const bundle = await readFile(resolve(root, "assets", files.find((name) => name.endsWith(".js"))), "utf8");
-if (!bundle.includes("线上邮局尚未开通")) throw new Error("Pages must show mail service availability");
+if (bundle.includes("线上邮局尚未开通")) throw new Error("Pages mail service must be enabled");
+if (!bundle.includes("https://typer-post.moji-pet.workers.dev")) throw new Error("Missing production mail API");
+if (!bundle.includes("给自己一个收信的地方")) throw new Error("Missing account registration");
 await writeFile(resolve(root, ".nojekyll"), "");
-console.log(`GitHub Pages build verified: ${checked} asset references, static mail availability, /Typer/ base.`);
+console.log(`GitHub Pages build verified: ${checked} asset references, live mail API, /Typer/ base.`);

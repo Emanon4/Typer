@@ -1,0 +1,94 @@
+.stamp-album-overlay {
+  position: fixed; inset: 0; z-index: 80; display: grid; place-items: center; padding: 22px;
+  font-family: "Songti SC", "STSong", "Georgia", serif;
+}
+.stamp-album {
+  position: relative; width: min(1180px, 96vw); max-height: 93dvh; overflow: auto;
+  color: #3d392b; background: #e9e1cd url("/assets/paper-stock-real-v2.png") center / cover;
+  border: 9px solid #433b2b; outline: 1px solid #9c8756; border-radius: 4px;
+  box-shadow: 0 25px 100px #000a, inset 0 0 0 1px #8c775255;
+  scrollbar-color: #ad9c75 #e3dbc5;
+}
+.album-header { display: flex; align-items: center; justify-content: space-between; padding: 26px 38px 22px; border-bottom: 1px solid #877a5d77; }
+.album-kicker { margin: 0 0 10px; font: 10px/1.5 Georgia, serif; letter-spacing: .34em; color: #807252; }
+.album-header h2 { display: inline-block; margin: 0 22px 0 0; font-size: 32px; font-weight: 400; letter-spacing: .2em; }
+.album-header span { font-size: 12px; letter-spacing: .15em; color: #7a6e54; }
+.album-close { padding: 8px 0; color: #726446; border: 0; border-bottom: 1px solid #8b7954; background: none; font: inherit; font-size: 13px; cursor: pointer; }
+.album-body { display: grid; grid-template-columns: minmax(0, 1fr) 310px; min-height: 520px; }
+.album-leaf { padding: 24px 30px 15px; background: linear-gradient(90deg, transparent 95%, #826d4420); }
+.album-filter { display: flex; gap: 22px; margin: 0 0 24px; }
+.album-filter button, .paper-category button { padding: 7px 0; border: 0; border-bottom: 1px solid transparent; background: none; color: #857a60; cursor: pointer; font: inherit; font-size: 13px; }
+.album-filter button[aria-pressed="true"] { border-color: #5c6049; color: #394432; }
+.album-filter small, .paper-category small { margin-left: 6px; font-size: 10px; opacity: .65; }
+.album-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 18px 14px; }
+.album-stamp { position: relative; min-width: 0; padding: 7px 6px 10px; border: 1px solid transparent; background: transparent; color: #514a36; text-align: center; cursor: pointer; }
+.album-stamp:hover, .album-stamp.selected { border-color: #8a805861; background: #fbf7e649; }
+.album-stamp-mount { display: flex; align-items: center; justify-content: center; height: clamp(120px, 13vw, 170px); padding: 0 4px 10px; }
+.album-stamp img { display: block; max-width: 100%; max-height: 100%; object-fit: contain; filter: drop-shadow(1px 3px 2px #66563826); }
+.album-stamp > span:not(.album-stamp-mount) { display: block; margin-top: 5px; font-size: 12px; letter-spacing: .05em; }
+.album-stamp > small { display: block; margin-top: 5px; font-size: 8px; line-height: 1.6; color: #847962; }
+.album-stamp i { position: absolute; top: 0; right: 0; color: #746035; font: 17px Georgia, serif; }
+.album-colophon { margin: 24px 0 0; text-align: center; color: #9a8d70; font-size: 9px; letter-spacing: .14em; }
+.album-empty { padding: 70px 10px; font-size: 13px; line-height: 1.9; color: #807359; text-align: center; }
+.album-detail { padding: 25px 29px; border-left: 1px solid #96836055; text-align: center; background: #fff9e32b; }
+.album-number { display: block; color: #978866; font: 9px Georgia, serif; letter-spacing: .28em; }
+.album-detail-art { display: block; width: 100%; height: 245px; margin: 23px auto 18px; object-fit: contain; filter: drop-shadow(2px 5px 3px #65502b35); }
+.album-region { margin: 0 0 10px; font-size: 10px; letter-spacing: .15em; color: #827458; }
+.album-detail h3 { margin: 0; font-size: 23px; font-weight: 400; letter-spacing: .12em; }
+.album-caption { margin: 10px 0 18px; color: #7e795e; font-size: 12px; }
+.album-description { min-height: 60px; margin: 0 0 20px; color: #7c7055; font-size: 12px; line-height: 1.9; text-align: left; }
+.album-collect, .album-use { width: 100%; margin-top: 9px; padding: 12px 8px; border: 1px solid #807556; background: transparent; color: #5e6247; font: inherit; font-size: 12px; letter-spacing: .05em; cursor: pointer; }
+.album-collect[aria-pressed="true"] { background: #65705714; }
+.album-use { background: #525b45; color: #f5e9c8; border-color: #525b45; }
+.album-note { min-height: 32px; margin: 12px 0 0; color: #677054; font-size: 11px; line-height: 1.7; }
+.stamp-album button:focus-visible { outline: 2px solid #8d7140; outline-offset: 3px; }
+.paper-category { display: flex; gap: 26px; margin: 0 0 16px; }
+.paper-category button { color: #b2a184; }
+.paper-category button[aria-pressed="true"] { color: #edd9b3; border-color: #b49a69; }
+.paper-options { max-height: 56dvh; padding: 3px; }
+.paper-options.postcard-options { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.postcard-options .paper-option-preview { aspect-ratio: 148 / 105; }
+.postcard-options .paper-option-name { font-size: 16px; }
+.paper-option:disabled { opacity: .6; cursor: wait; }
+.postcard-document { width: min(780px, 88vw); max-width: 100%; }
+.postcard-document .final-sheet.postcard-back, .opened-letter .postcard-document .final-sheet { width: 100%; height: auto; aspect-ratio: 148 / 105; }
+.postcard-front { display: block; width: 100%; height: auto; aspect-ratio: 148 / 105; object-fit: cover; box-shadow: 0 20px 55px #0007; }
+.postcard-flip { display: block; margin: 0 0 14px auto; padding: 5px 0; border: 0; border-bottom: 1px solid currentColor; color: #decca8; background: transparent; font: inherit; font-size: 12px; cursor: pointer; }
+.postcard-flip span { margin-left: 12px; }
+.post-overlay .postcard-flip { color: #706145; }
+.postcard-back { container-type: inline-size; }
+.postcard-back::after { content: ""; position: absolute; inset: 5% 4%; border: 1px solid var(--postcard-accent); opacity: .5; pointer-events: none; }
+.postcard-heading { position: absolute; z-index: 1; left: 0; right: 0; top: 11%; text-align: center; font: 1.9cqw Georgia, serif; color: var(--postcard-accent); opacity: .65; pointer-events: none; }
+.stamp-picker { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+.stamp-picker > button { width: auto; min-width: 0; flex-direction: column; align-items: center; padding: 10px 5px; text-align: center; }
+.stamp-picker > button > img { width: 64px; height: 92px; object-fit: contain; }
+.stamp-picker > button > span { font-size: 12px; }
+.stamp-picker > button small { margin-top: 4px; font-size: 9px; }
+@media (max-width: 900px) {
+  .album-body { grid-template-columns: minmax(0, 1fr) 250px; }
+  .album-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .album-leaf { padding: 20px; }
+  .album-detail { padding: 24px 20px; }
+  .album-detail-art { height: 220px; }
+}
+@media (max-width: 600px) {
+  .stamp-album-overlay { padding: 8px; }
+  .stamp-album { max-height: 96dvh; border-width: 5px; }
+  .album-header { padding: 20px; gap: 12px; }
+  .album-header h2 { font-size: 26px; }
+  .album-header span { display: block; margin-top: 8px; font-size: 10px; }
+  .album-close { font-size: 11px; white-space: nowrap; }
+  .album-body { display: flex; flex-direction: column-reverse; }
+  .album-detail { display: grid; grid-template-columns: 110px 1fr; gap: 5px 20px; text-align: left; padding: 20px; border-bottom: 1px solid #96836055; }
+  .album-detail-art { grid-row: 1 / 6; width: 110px; height: 165px; margin: 0; }
+  .album-number, .album-region, .album-detail h3, .album-caption, .album-description { grid-column: 2; margin: 0; min-height: 0; }
+  .album-description { font-size: 11px; }
+  .album-detail h3 { font-size: 21px; }
+  .album-collect, .album-use, .album-note { grid-column: 1 / -1; }
+  .album-note { min-height: 0; margin: 4px 0 0; }
+  .album-grid { gap: 14px 8px; }
+  .album-stamp-mount { height: 140px; }
+  .album-filter { margin-bottom: 12px; }
+  .paper-options.postcard-options { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .stamp-picker { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}

@@ -6,6 +6,11 @@ dist/
 output/*/qa-post.sqlite*
 /output/
 .playwright-cli/
+.wrangler/
+.dev.vars*
+.env.local
+.env.*.local
+post-worker/worker-configuration.d.ts
 
 # Local source recordings and redundant checkpoint copies are not release files.
 /飞书20260727-181415.mp4

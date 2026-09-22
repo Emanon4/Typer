@@ -59,7 +59,25 @@ export const PAPER_TEMPLATES = [
     backgroundPosition: "center",
     fileLabel: "蓝线信纸",
   },
-].map((paper) => ({ ...paper, asset: publicAsset(paper.asset) }));
+  ...[
+    { id: "kyoto", name: "京都春水", era: "木版风景明信片", description: "樱枝垂向河面，小桥与远处屋檐留在淡靛色春光里。", accent: "#6a737c" },
+    { id: "venice", name: "水城晨曦", era: "铜版旅行明信片", description: "拱桥、贡多拉与清晨水光，一封来自威尼斯的问候。", accent: "#677b86" },
+    { id: "botanical", name: "鸢尾花事", era: "植物图谱明信片", description: "旧植物图谱中的鸢尾与蕨叶，寄走一小片春天。", accent: "#73765d" },
+    { id: "observatory", name: "夜航星图", era: "天文藏书明信片", description: "深蓝天幕上的黄铜星仪，把夜晚留给遥远的人。", accent: "#7c6940" },
+    { id: "silk-road", name: "丝路远行", era: "旅行画册明信片", description: "驼队经过沙丘与绿洲，山色在天际慢慢变蓝。", accent: "#997055" },
+    { id: "mediterranean", name: "地中海庭院", era: "石版风景明信片", description: "穿过石拱望见海，柏树与陶土色庭院盛着午后的安静。", accent: "#7e8869" },
+  ].map(card => ({
+    ...card,
+    id: `postcard-${card.id}`,
+    format: "postcard",
+    frontAsset: `assets/postcards/${card.id}.webp`,
+    asset: "assets/paper-stock-real-v2.png",
+    base: "#eee5d1",
+    backgroundSize: "cover",
+    backgroundPosition: "center",
+    fileLabel: card.name,
+  })),
+].map((paper) => ({ ...paper, asset: publicAsset(paper.asset), ...(paper.frontAsset ? { frontAsset: publicAsset(paper.frontAsset) } : {}) }));
 
 export function getPaperTemplate(id) {
   return (

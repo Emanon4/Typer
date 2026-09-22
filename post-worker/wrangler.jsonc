@@ -1,0 +1,18 @@
+{
+  "$schema": "../node_modules/wrangler/config-schema.json",
+  "name": "typer-post",
+  "main": "index.js",
+  "compatibility_date": "2026-09-22",
+  "compatibility_flags": ["nodejs_compat"],
+  "workers_dev": true,
+  "preview_urls": false,
+  "observability": { "enabled": true, "head_sampling_rate": 1 },
+  "vars": { "ALLOWED_ORIGINS": "https://emanon4.github.io" },
+  "d1_databases": [{
+    "binding": "DB",
+    "database_name": "typer-post",
+      "database_id": "03a7b313-e0e4-494d-92ef-4666d6499777",
+    "migrations_dir": "migrations"
+  }],
+  "triggers": { "crons": ["19 3 * * *"] }
+}

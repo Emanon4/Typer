@@ -28,6 +28,10 @@
   pointer-events:none;
 }
 .reference-machine { z-index:3; }
+.reference-keyboard { position:absolute; inset:0; z-index:6; pointer-events:none; }
+.reference-key-hit { position:absolute; padding:0; margin:0; border:0; border-radius:50%; background:transparent; color:transparent; pointer-events:auto; cursor:pointer; touch-action:manipulation; -webkit-tap-highlight-color:transparent; }
+.reference-key-hit:focus-visible { outline:1px solid #dfc593; outline-offset:3px; }
+.reference-key-hit:disabled { cursor:default; }
 .reference-carriage-hardware { z-index:2; }
 .reference-paper-window {
   position:absolute;

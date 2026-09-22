@@ -3,13 +3,16 @@ import { flushSync } from "react-dom";
 import { createAudioEngine } from "./audioEngine";
 import { createImeInputAdapter } from "./imeInput";
 import { runStrikeCycle } from "./strikeCycle";
+import { pointerKeyAction } from "./pointerKeyboard";
 import { exportPaperPng } from "./exportPaper";
 import { PaperDocument as FinishedSheet, paperStyle } from "./PaperDocument";
 import { blankDocument, normalizeDocument, rollLengthMetres } from "./writingModel";
 import { saveDocument, readDocument, listDocuments } from "./documentStore";
 import { PostOffice } from "./PostOffice";
+import { StampAlbum } from "./StampAlbum";
 import { publicAsset } from "./runtimeConfig";
 import "./correspondence.css";
+import "./postalCollection.css";
 import { ReferenceMachine, MachineFinishPreview } from "./ReferenceMachine";
 import { MACHINE_VARIANTS, MACHINE_VARIANT_KEY, getMachineVariant, loadMachineVariantId, variantStyle } from "./machineVariants";
 import { MACHINE_MODELS, MACHINE_MODEL_KEY, getMachineModel, loadMachineModelId } from "./machineModels";
@@ -158,6 +161,10 @@ export function App() {
   const [ejected, setEjected] = useState(false);
   const [exportState, setExportState] = useState("idle");
   const [paperBoxOpen, setPaperBoxOpen] = useState(false);
+  const [paperCategory, setPaperCategory] = useState("sheet");
+  const [albumOpen, setAlbumOpen] = useState(false);
+  const [paperChanging, setPaperChanging] = useState(false);
+  const [shiftLatched, setShiftLatched] = useState(false);
   const [manuscriptBoxOpen, setManuscriptBoxOpen] = useState(false);
   const [manuscripts, setManuscripts] = useState(loadManuscripts);
   const [viewingManuscript, setViewingManuscript] = useState(null);
@@ -385,6 +392,20 @@ export function App() {
     enqueue(items);
   }
 
+  function pressVisibleKey(key, shift = false) {
+    if (ejected || ejecting || compositionRef.current) return;
+    if (soundRef.current) audio().wake();
+    const action = pointerKeyAction(key, shift || shiftLatched);
+    if (action.type === "shift") {
+      setShiftLatched(value => !value);
+      play("space");
+    } else {
+      enqueue([action]);
+      setShiftLatched(false);
+    }
+    focusWriter();
+  }
+
   function handleKeyDown(event) {
     if (ejected || ejecting) return;
     if (soundRef.current) audio().wake();
@@ -483,6 +504,7 @@ export function App() {
 
   function loadFreshSheet() {
     const fresh = blankModel(modelRef.current.kind||"sheet");
+    fresh.paperFormat = fresh.kind === "scroll" ? "sheet" : selectedPaper.format || "sheet";
     if(fresh.kind==="letter")fresh.ownerId=modelRef.current.ownerId;
     if(fresh.kind==="scroll")localStorage.setItem("typer-active-scroll-v1",fresh.id);
     cycleRef.current += 1;
@@ -529,13 +551,14 @@ export function App() {
   }
 
   function installDocument(next,nextPaper=paperId) {
+    next = { ...next, paperFormat: next.kind === "scroll" ? "sheet" : getPaperTemplate(nextPaper).format || "sheet" };
     cycleRef.current++;queueRef.current=[];processingRef.current=false;
     imeInputRef.current.reset();compositionRef.current=false;setCompositionText("");
     if(inputRef.current)inputRef.current.value="";
     setReturning(false);setActiveKey("");setMachineHit(false);setMechanismPhase("idle");
     paperRef.current=nextPaper;setPaperId(nextPaper);commitModel(next);
     setEjected(false);setSavedManuscriptId("");setViewingManuscript(null);setManuscriptBoxOpen(false);setWorkbenchOpen(false);
-    rememberTimer(window.setTimeout(focusWriter,120));
+    if (!paperBoxOpen) rememberTimer(window.setTimeout(focusWriter,120));
   }
 
   async function switchWritingMode(kind) {
@@ -593,6 +616,7 @@ export function App() {
     inputRef.current?.blur();
     setWorkbenchOpen(false);
     setPaperBoxOpen(true);
+    setPaperCategory(selectedPaper.format === "postcard" ? "postcard" : "sheet");
     setStatus("正在挑选稿纸");
   }
 
@@ -602,12 +626,31 @@ export function App() {
     rememberTimer(window.setTimeout(focusWriter, 120));
   }
 
-  function choosePaper(nextPaper) {
-    paperRef.current=nextPaper.id;
-    setPaperId(nextPaper.id);
-    if(modelRef.current.kind==="scroll"||modelRef.current.kind==="letter")commitModel(modelRef.current);
-    setStatus(`已装入「${nextPaper.name}」`);
-    play("space");
+  async function choosePaper(nextPaper) {
+    if (paperChanging) return;
+    if (processingRef.current || compositionRef.current) { setStatus("请等当前文字落纸后再换纸"); return; }
+    setPaperChanging(true);
+    try {
+      await savePendingRef.current;
+      const current = modelRef.current;
+      const nextFormat = nextPaper.format || "sheet";
+      const changedShape = nextFormat !== (current.paperFormat || "sheet") || (current.kind === "scroll" && nextFormat === "postcard");
+      let next = { ...current, paperFormat: nextFormat };
+      if (changedShape) {
+        const ink = current.lines.some(row => row.glyphs.length);
+        if (ink) {
+          if (current.kind === "letter") await saveDocument(current, { paperId: paperRef.current, all: true });
+          else await saveToManuscriptBox();
+        }
+        const kind = current.kind === "letter" ? "letter" : "sheet";
+        next = blankDocument(kind, { paperFormat: nextFormat, ...(kind === "letter" ? { ownerId: current.ownerId, recipient: current.recipient } : {}) });
+        if (kind === "sheet") localStorage.setItem("typer-writing-mode-v1", "sheet");
+      }
+      installDocument(next, nextPaper.id);
+      setStatus(`已装入「${nextPaper.name}」${changedShape && hasInk ? "，原稿已收好" : ""}`);
+      play("space");
+    } catch { setStatus("原稿暂时无法收好，请先导出后再换纸"); }
+    finally { setPaperChanging(false); }
   }
 
   function openManuscriptBox() {
@@ -627,6 +670,11 @@ export function App() {
 
   async function saveToManuscriptBox() {
     if (!hasInk) return;
+    if (modelRef.current.kind === "letter") {
+      await saveDocument(modelRef.current, { paperId: paperRef.current, all: true });
+      setStatus("信笺已保存在当前账号的草稿中");
+      return;
+    }
 
     const snapshot = cloneModel(modelRef.current);
     if(snapshot.kind==="scroll") {
@@ -680,7 +728,7 @@ export function App() {
     try {
       const fileName=await exportPaperPng(sourceModel, sourcePaper);
       setExportState("done");
-      setStatus(fileName.endsWith(".zip")?"长卷已按顺序导出为 PNG 压缩包":"高分辨率稿纸已导出");
+      setStatus(sourceModel.paperFormat === "postcard" ? "明信片正反面已导出为 PNG 压缩包" : fileName.endsWith(".zip")?"长卷已按顺序导出为 PNG 压缩包":"高分辨率稿纸已导出");
       rememberTimer(window.setTimeout(() => setExportState("idle"), 1800));
     } catch (error) {
       console.error(error);
@@ -710,7 +758,7 @@ export function App() {
         ? "已导出"
         : exportState === "error"
           ? "请重试"
-          : (viewingManuscript?.model||model).kind==="scroll"?"导出长卷":"导出 PNG";
+          : (viewingManuscript?.model||model).kind==="scroll"?"导出长卷":(viewingManuscript?.model||model).paperFormat==="postcard"?"导出双面":"导出 PNG";
 
   const writerInput = (
     <textarea
@@ -830,12 +878,12 @@ export function App() {
         }${ejecting ? " is-ejecting" : ""}`}
         onPointerDown={focusWriter}
         inert={
-          ejected || paperBoxOpen || manuscriptBoxOpen || viewingManuscript || postOpen
+          ejected || paperBoxOpen || manuscriptBoxOpen || viewingManuscript || postOpen || albumOpen
             ? true
             : undefined
         }
         aria-hidden={
-          ejected || paperBoxOpen || manuscriptBoxOpen || viewingManuscript || postOpen
+          ejected || paperBoxOpen || manuscriptBoxOpen || viewingManuscript || postOpen || albumOpen
             ? "true"
             : undefined
         }
@@ -855,6 +903,8 @@ export function App() {
           returning={returning}
           ejecting={ejecting}
           paperVisualStyle={paperVisualStyle}
+          onKeyPress={pressVisibleKey}
+          shiftLatched={shiftLatched}
         >
           {writerInput}
         </ReferenceMachine>
@@ -866,6 +916,7 @@ export function App() {
         </header>
 
         <nav className="stage-actions" aria-label="打字机控制">
+          <button className="workbench-trigger" type="button" onPointerDown={event=>event.stopPropagation()} onClick={()=>{inputRef.current?.blur();setWorkbenchOpen(false);setAlbumOpen(true);}}>集邮册</button>
           <button className="workbench-trigger" type="button" onPointerDown={event=>event.stopPropagation()} onClick={()=>{setWorkbenchOpen(false);setPostOpen(true);}}>信邮</button>
           <button className="workbench-trigger" type="button" onPointerDown={(event) => event.stopPropagation()} onClick={toggleWorkbench} aria-expanded={workbenchOpen}>
             工作台
@@ -885,7 +936,7 @@ export function App() {
         </div>
 
         <p className="instruction-line">
-          {model.kind==="scroll"?"凯鲁亚克 · 长卷没有页末，想停时再收卷":model.kind==="letter"?`书信 · ${model.recipient?`致 ${model.recipient}`:"写完后折纸封缄"}`:"A4 稿纸 · 系统中文输入法 · 回车换行 · 退格只移动字车"}
+          {model.kind==="scroll"?"凯鲁亚克 · 长卷没有页末，想停时再收卷":model.kind==="letter"?`书信 · ${model.recipient?`致 ${model.recipient}`:"写完后折纸封缄"}`:model.paperFormat==="postcard"?`${selectedPaper.name} · 一面风景，一面你的话`:"A4 稿纸 · 系统中文输入法 · 回车换行 · 退格只移动字车"}
         </p>
       </section>
 
@@ -992,24 +1043,26 @@ export function App() {
                 收起
               </button>
             </header>
-            <p className="paper-box-intro">
-              五种纸都保留真实纸面。选择后会立即装入打字机，并用于成稿预览和
-              300 DPI 导出。
-            </p>
-            <div className="paper-options">
-              {PAPER_TEMPLATES.map((paper) => (
+            <p className="paper-box-intro">{paperCategory === "postcard" ? "一面收藏风景，一面写下问候。换成明信片时，当前稿件会先收好。" : "挑一张合适的纸，让今天的话慢慢落下来。"}</p>
+            <div className="paper-category" aria-label="纸品分类">
+              <button aria-pressed={paperCategory === "sheet"} onClick={()=>setPaperCategory("sheet")}>稿纸与信笺 <small>5</small></button>
+              <button aria-pressed={paperCategory === "postcard"} onClick={()=>setPaperCategory("postcard")}>明信片 <small>6</small></button>
+            </div>
+            <div className={`paper-options${paperCategory === "postcard" ? " postcard-options" : ""}`}>
+              {PAPER_TEMPLATES.filter(paper=>(paper.format || "sheet") === paperCategory).map((paper) => (
                 <button
                   className={`paper-option${
                     paper.id === paperId ? " selected" : ""
                   }`}
                   type="button"
+                  disabled={paperChanging}
                   aria-pressed={paper.id === paperId}
                   aria-label={`${paper.name}，${paper.era}。${paper.description}`}
                   onClick={() => choosePaper(paper)}
                   key={paper.id}
                 >
                   <span className="paper-option-preview">
-                    <img src={paper.asset} alt="" draggable="false" />
+                    <img src={paper.frontAsset || paper.asset} alt="" draggable="false" loading="lazy" />
                   </span>
                   <span className="paper-option-name">{paper.name}</span>
                   <span className="paper-option-era">{paper.era}</span>
@@ -1025,6 +1078,8 @@ export function App() {
           </div>
         </section>
       )}
+
+      {albumOpen && <StampAlbum onClose={()=>{setAlbumOpen(false);rememberTimer(window.setTimeout(focusWriter,120));}} />}
 
       {manuscriptBoxOpen && (
         <section

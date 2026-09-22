@@ -3,23 +3,8 @@ import { listDocuments } from "./documentStore";
 import { PaperDocument } from "./PaperDocument";
 import { getPaperTemplate } from "./paperTemplates";
 import { exportPaperPng } from "./exportPaper";
-import { publicAsset, POST_AVAILABLE } from "./runtimeConfig";
-
-const STAMPS = [
-  {
-    id: "road",
-    name: "山路",
-    caption: "写给远方",
-    asset: "assets/post-stamp-road.png",
-  },
-  {
-    id: "swallow",
-    name: "归燕",
-    caption: "见字如晤",
-    asset: "assets/post-stamp-swallow.png",
-  },
-].map((stamp) => ({ ...stamp, asset: publicAsset(stamp.asset) }));
-const stampById = (id) => STAMPS.find((stamp) => stamp.id === id) || STAMPS[0];
+import { postApi as api } from "./postApi";
+import { STAMPS, stampById, preferredStampId, preferStamp } from "./stamps";
 const date = (value) =>
   new Intl.DateTimeFormat("zh-CN", {
     month: "long",
@@ -27,19 +12,6 @@ const date = (value) =>
     hour: "2-digit",
     minute: "2-digit",
   }).format(new Date(value));
-async function api(path, method = "GET", body) {
-  const response = await fetch(`/api${path}`, {
-    method,
-    credentials: "same-origin",
-    headers: body ? { "Content-Type": "application/json" } : undefined,
-    body: body ? JSON.stringify(body) : undefined,
-  });
-  if (!response.headers.get("content-type")?.includes("application/json"))
-    throw new Error("邮局暂未连接，请稍后重试");
-  const data = await response.json();
-  if (!response.ok) throw new Error(data.error || "邮局暂时无法处理");
-  return data;
-}
 
 function Envelope({ letter, onOpen, from, to, stampId = "road" }) {
   const stamp = stampById(letter?.stampId || stampId);
@@ -99,7 +71,7 @@ export function PostOffice({
     [blocks, setBlocks] = useState([]);
   const [to, setTo] = useState(""),
     [title, setTitle] = useState(""),
-    [stampId, setStampId] = useState("road"),
+    [stampId, setStampId] = useState(preferredStampId),
     [hours, setHours] = useState(24),
     [recipient, setRecipient] = useState(null),
     [receipt, setReceipt] = useState(null);
@@ -114,7 +86,6 @@ export function PostOffice({
   identity.current = user?.id;
   tabRef.current = tab;
   useEffect(() => {
-    if (!POST_AVAILABLE) return;
     let alive = true;
     api("/me")
       .then((data) => {
@@ -144,6 +115,7 @@ export function PostOffice({
     if (!open) return;
     closeRef.current?.focus();
     if (sealedDraft) {
+      setStampId(preferredStampId());
       setTab("seal");
       setTo(sealedDraft.recipient || "");
       setTitle(sealedDraft.title || "");
@@ -291,14 +263,7 @@ export function PostOffice({
             {note}
           </p>
         )}
-        {!POST_AVAILABLE ? (
-          <div className="post-auth-content">
-            <img src={STAMPS[1].asset} alt="归燕邮票" className="auth-stamp" />
-            <h3>线上邮局尚未开通。</h3>
-            <p>账号互寄暂时不可用。你可以先用信笺写作，导出后把纸上的话交给对方。</p>
-            <button className="post-text-button" onClick={onClose}>回去写作</button>
-          </div>
-        ) : !user ? (
+        {!user ? (
           <div className="post-auth-content">
             <img src={STAMPS[1].asset} alt="归燕邮票" className="auth-stamp" />
             <h3>
@@ -469,7 +434,7 @@ export function PostOffice({
                         type="button"
                         className={stampId === stamp.id ? "selected" : ""}
                         aria-pressed={stampId === stamp.id}
-                        onClick={() => setStampId(stamp.id)}
+                        onClick={() => { setStampId(stamp.id); preferStamp(stamp.id); }}
                         key={stamp.id}
                       >
                         <img src={stamp.asset} alt="" />
