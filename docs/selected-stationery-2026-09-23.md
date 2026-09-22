@@ -2,6 +2,20 @@
 
 用户从十二个候选中选择 01、03、10、11。其余候选不进入产品。
 
+随后用户要求撤下「民国书简」，并批准新生成的「月相观测笺」补位，明确表示这款纸的高级感可作为后续设计基准。「民国书简」不再出现在稿纸箱或成为新信件的默认用纸；已保存的旧稿仍保留原始纸面。
+
+## 月相观测笺（补位）
+
+生成方式：built-in image_gen；原图直接无损转为 WebP。
+
+资产：`public/assets/stationery/lunar-observatory.webp`
+
+生成提示词：
+
+```text
+Use case: product-mockup. Create one premium finished writing-paper asset, a full-bleed FLAT perpendicular scan of the paper face itself, portrait A4 210:297 aspect ratio. All four image edges are the paper edges; no tabletop, no mockup perspective, no drop shadows, no envelope, no pen, no hands, no typography, no letters, no numerals, no watermark. New design: 'Lunar Observatory', very sophisticated contemporary stationery inspired by antique astronomical engravings, but with clean editorial restraint. Natural light ivory cotton paper with subtle authentic fiber, cool charcoal blue ink and extremely fine pale antique-gold accents. Across the TOP SIX PERCENT only, a tiny centered horizontal engraved sequence of seven lunar phases with exquisitely detailed lunar craters. In the BOTTOM RIGHT CORNER only, within x=73%-96%, y=88%-97%, a small extraordinarily fine engraved brass armillary sphere with dark ink crosshatching and delicate orbit circles. A very fine broken hairline near the extreme outer edges, no solid frame and no ruled lines. Entire rectangle x=10%-90%, y=9%-85% MUST be completely blank light ivory paper, clean and writable; absolutely no stars or artwork or tint panels in the central writing field. Elegant quiet spacing, luminous blank center, scholarly beauty, excellent tactile printing details, no artificially dark antique staining. Generate the finished paper texture only.
+```
+
 生成方式：built-in image_gen。原始画面无裁改，以无损 WebP 发布；四款均为完整 A4 纸面。
 
 书写边界属于已保存的稿纸，现场书写、信件快照与 PNG 导出共用同一套排版。更换可写区域时先收好原稿。装饰信笺不作为凯鲁亚克长卷纹理。

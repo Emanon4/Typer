@@ -28,6 +28,7 @@ export const PAPER_TEMPLATES = [
   },
   {
     id: "republic-letter",
+    retired: true,
     name: "民国书简",
     era: "朱砂双框信笺",
     description: "暖黄棉纸配朱砂双框，适合书简、家书与正式通信。",
@@ -36,6 +37,19 @@ export const PAPER_TEMPLATES = [
     backgroundSize: "cover",
     backgroundPosition: "center",
     fileLabel: "民国书简",
+  },
+  {
+    id: "lunar-observatory",
+    name: "月相观测笺",
+    era: "月相与星仪铜版画",
+    description: "月相静静排列在页首，细刻星仪守在纸角，把宽阔的浅色棉纸留给文字。",
+    asset: "assets/stationery/lunar-observatory.webp",
+    collection: "replacement-2026-09",
+    base: "#f4eee1",
+    printArea: { left: 12, right: 88, bottom: 74 },
+    backgroundSize: "cover",
+    backgroundPosition: "center",
+    fileLabel: "月相观测笺",
   },
   {
     id: "red-grid",
@@ -85,6 +99,10 @@ export const PAPER_TEMPLATES = [
   })),
 ].map((paper) => ({ ...paper, asset: publicAsset(paper.asset), ...(paper.frontAsset ? { frontAsset: publicAsset(paper.frontAsset) } : {}) }));
 
+// Retired stocks remain available for previously saved manuscripts and letters.
+export const AVAILABLE_PAPER_TEMPLATES = PAPER_TEMPLATES.filter(paper => !paper.retired);
+export const DEFAULT_LETTER_PAPER_ID = "lunar-observatory";
+
 export function getPaperTemplate(id) {
   return (
     PAPER_TEMPLATES.find((template) => template.id === id) ||
@@ -98,7 +116,7 @@ export function loadPaperTemplateId() {
     stored = localStorage.getItem(LEGACY_PAPER_SELECTION_KEY);
     if (stored) localStorage.setItem(PAPER_SELECTION_KEY, stored);
   }
-  return PAPER_TEMPLATES.some((template) => template.id === stored)
+  return AVAILABLE_PAPER_TEMPLATES.some((template) => template.id === stored)
     ? stored
     : PAPER_TEMPLATES[0].id;
 }

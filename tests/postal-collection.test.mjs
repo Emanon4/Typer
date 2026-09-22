@@ -4,7 +4,7 @@ import { existsSync, mkdtempSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { STAMPS } from "../src/stamps.js";
-import { PAPER_TEMPLATES } from "../src/paperTemplates.js";
+import { PAPER_TEMPLATES, AVAILABLE_PAPER_TEMPLATES, DEFAULT_LETTER_PAPER_ID, getPaperTemplate } from "../src/paperTemplates.js";
 import { PAPER, STRIKE, GUIDE_TOP, getPaperLayout, inkEnvelope, REFERENCE_KEYS } from "../src/referenceGeometry.js";
 import { MACHINE_MODELS, getModelKeys } from "../src/machineModels.js";
 import { exportSlices } from "../src/writingModel.js";
@@ -15,7 +15,7 @@ const close = (a, b) => assert.ok(Math.abs(a - b) < 1e-8, `${a} != ${b}`);
 test("the four selected stationery designs keep a full page of ink clear of their art", () => {
   const papers = PAPER_TEMPLATES.filter(paper => paper.collection === "selected-2026-09");
   assert.deepEqual(papers.map(paper => paper.id), ["florentine", "bauhaus", "terracotta", "iris"]);
-  for (const paper of papers) for (const layoutId of ["compact", "reference"]) {
+  for (const paper of PAPER_TEMPLATES.filter(paper => paper.printArea)) for (const layoutId of ["compact", "reference"]) {
     assert.ok(existsSync(new URL(`../public/${paper.asset.replace(/^\//, "")}`, import.meta.url)));
     const model = {kind:"letter", paperId:paper.id, layoutId};
     const layout = getPaperLayout(model), original = getPaperLayout({layoutId});
@@ -37,6 +37,13 @@ test("the four selected stationery designs keep a full page of ink clear of thei
     assert.equal(slice.last, layout.maxLines);
     close(slice.top / 2480, layout.paperHeight * layout.start / 100 / PAPER.width);
   }
+});
+test("retired stationery stays readable in saved letters but cannot be picked for new writing", () => {
+  assert.equal(AVAILABLE_PAPER_TEMPLATES.some(paper => paper.id === "republic-letter"), false);
+  assert.equal(getPaperTemplate("republic-letter").asset, "/assets/paper-letter-v1.png");
+  assert.equal(DEFAULT_LETTER_PAPER_ID, "lunar-observatory");
+  assert.equal(AVAILABLE_PAPER_TEMPLATES.filter(paper => paper.format !== "postcard").length, 9);
+  assert.ok(AVAILABLE_PAPER_TEMPLATES.some(paper => paper.id === DEFAULT_LETTER_PAPER_ID));
 });
 test("every collectible and postcard has a distinct, shipped illustration", () => {
   assert.equal(STAMPS.length, 12);

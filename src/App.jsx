@@ -22,7 +22,8 @@ import {
   getPaperTemplate,
   loadPaperTemplateId,
   PAPER_SELECTION_KEY,
-  PAPER_TEMPLATES,
+  AVAILABLE_PAPER_TEMPLATES,
+  DEFAULT_LETTER_PAPER_ID,
 } from "./paperTemplates";
 import {
   INK_TRACK_WIDTH_PERCENT,
@@ -596,7 +597,7 @@ export function App() {
     if(existing&&existing.ownerId!==ownerId)return;
     const next=existing||blankDocument("letter",{ownerId,recipient});
     if(existing?.mailedAt)return;
-    installDocument(next,existing?.paperId||"republic-letter");
+    installDocument(next,existing?.paperId||DEFAULT_LETTER_PAPER_ID);
     setPostOpen(false);setSealedDraft(null);setStatus(recipient?`正在给 ${recipient} 写信`:"信笺已装好，写完后再封缄");
   }
 
@@ -1049,11 +1050,11 @@ export function App() {
             </header>
             <p className="paper-box-intro">{paperCategory === "postcard" ? "一面收藏风景，一面写下问候。换成明信片时，当前稿件会先收好。" : "挑一张合适的纸，让今天的话慢慢落下来。"}</p>
             <div className="paper-category" aria-label="纸品分类">
-              <button aria-pressed={paperCategory === "sheet"} onClick={()=>setPaperCategory("sheet")}>稿纸与信笺 <small>{PAPER_TEMPLATES.filter(paper=>paper.format!=="postcard").length}</small></button>
-              <button aria-pressed={paperCategory === "postcard"} onClick={()=>setPaperCategory("postcard")}>明信片 <small>{PAPER_TEMPLATES.filter(paper=>paper.format==="postcard").length}</small></button>
+              <button aria-pressed={paperCategory === "sheet"} onClick={()=>setPaperCategory("sheet")}>稿纸与信笺 <small>{AVAILABLE_PAPER_TEMPLATES.filter(paper=>paper.format!=="postcard").length}</small></button>
+              <button aria-pressed={paperCategory === "postcard"} onClick={()=>setPaperCategory("postcard")}>明信片 <small>{AVAILABLE_PAPER_TEMPLATES.filter(paper=>paper.format==="postcard").length}</small></button>
             </div>
             <div className={`paper-options${paperCategory === "postcard" ? " postcard-options" : ""}`}>
-              {PAPER_TEMPLATES.filter(paper=>(paper.format || "sheet") === paperCategory)
+              {AVAILABLE_PAPER_TEMPLATES.filter(paper=>(paper.format || "sheet") === paperCategory)
                 .sort((a,b)=>Number(Boolean(b.collection))-Number(Boolean(a.collection))).map((paper) => (
                 <button
                   className={`paper-option${
