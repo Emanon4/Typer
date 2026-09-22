@@ -12,7 +12,7 @@ Build app UI in `src/`. Keep `.openai/hosting.json`, `worker/index.js`, `scripts
 
 - The user authorized publishing every current source change to the public `Emanon4/Typer` repository and deploying the frontend with GitHub Pages. Pages builds use `/Typer/` and the `pages` mode; verify dynamic paper, font and audio URLs under that base. The user requested all online features enabled. Pages connects to `https://typer-post.moji-pet.workers.dev`, backed by Cloudflare D1; verify real account registration and correspondence on the deployed API. Keep the complete local mail server and tests in the public source repository; never bundle the account database, passwords or session data into the Pages artifact.
 
-- The formal product and repository name is `Typer`. Keep that name consistent in product copy, filenames, package metadata, local project naming, and remote repository naming. The product slogan is exactly `让你情不自禁地开始写作！`.
+- The formal product and repository name is `Typer`. Keep that name consistent in product copy, filenames, package metadata, local project naming, and remote repository naming. The product slogan is exactly `让你情不自禁地写作`.
 - This prototype is an experiential writing instrument, not a generic editor or landing page.
 - Deeply simulate a real mechanical typewriter: fixed strike point, moving carriage, key depression, typebar strike, carriage return, paper advance, mechanical audio, and paper ejection.
 - Chinese input is mandatory. Use the operating system IME and commit selected Chinese graphemes to paper without breaking composition events.

@@ -1,6 +1,6 @@
 # Typer
 
-让你情不自禁地开始写作！
+让你情不自禁地写作
 
 [在线使用](https://emanon4.github.io/Typer/) · [公开源码](https://github.com/Emanon4/Typer)
 

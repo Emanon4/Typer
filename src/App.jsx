@@ -913,7 +913,7 @@ export function App() {
 
         <header className="brand-lockup">
           <span className="brand-name">Typer</span>
-          <span className="machine-number">让你情不自禁地开始写作！</span>
+          <span className="machine-number">让你情不自禁地写作</span>
           <span className="finish-caption">{selectedMachine.name} · {selectedVariant.name}</span>
         </header>
 
