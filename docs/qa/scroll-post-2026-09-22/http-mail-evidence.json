@@ -1,0 +1,10 @@
+{
+  "transport": "actual HTTP on isolated localhost:4175",
+  "posted": 201,
+  "deliveryImmediate": true,
+  "arrived": true,
+  "paperId": "republic-letter",
+  "stampId": "swallow",
+  "seedPreserved": true,
+  "text": "给远方的人：见字如晤。"
+}

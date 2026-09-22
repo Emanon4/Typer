@@ -1,6 +1,6 @@
 # Visual Assets
 
-All generated images are project-bound outputs made with the built-in image generation tool. The supplied video was used as the composition, motion, paper, sound, and atmosphere reference. The machine scene remains an original photoreal interpretation; the paper-bail strip and default paper stock are direct crops retained because the user explicitly requested those source details one-to-one.
+All generated images are project-bound outputs made with the built-in image generation tool. The supplied video was used as the composition, motion, paper, sound, and atmosphere reference. The earlier machine scene was an original photoreal interpretation; the paper-bail strip and default paper stock are direct crops retained because the user explicitly requested those source details one-to-one.
 
 ## Main scene prompt
 
@@ -62,6 +62,8 @@ Final prompt:
 
 `public/assets/paper-bail-reference.png` is a 1510 × 40 transparent crop of the exact horizontal guide rod and two rubber rollers shown in the user's source screenshot. `scripts/extract-paper-bail.py` records the alpha-mask extraction. This asset is positioned as carriage hardware rather than drawn with CSS, and it travels horizontally with the physical carriage while remaining vertically fixed to the platen.
 
+As of 2026-09-07 the close-up renders the rubber rollers as proportional CSS background crops from this unchanged asset, joined by an independent CSS metal rod. The assembly shares the paper carriage displacement. This avoids flattening the entire strip to fit the measured gap between printed rows; the photographed machine itself remains unchanged.
+
 ## Reference-matched writing assets
 
 `public/assets/reference-paper-stock.png` is a clean paper-stock crop from the user-supplied video and is the default selected stock. `public/assets/paper-stock-real-v2.png` remains available as the higher-fiber alternative.
@@ -77,3 +79,48 @@ Chinese and Latin output are rendered one glyph at a time by `src/InkGlyph.jsx`.
 `reference/video-reference-frame.jpg` is an extracted frame from the user-provided video and is retained only for visual QA.
 
 `reference/refinement/` is the local working set used for frame and audio analysis. Raw frame sequences and source audio are intentionally excluded from Git; reproducible scripts and final evidence remain in the repository.
+
+## 2026-09-22 video-matching candidates (not visually accepted)
+
+The user requested one machine, a much closer recreation of the video's mechanical close-up, and a viewport-filling environment. These independent PNG assets were generated with the built-in `image_gen` tool and integrated into the current local work version. They are not evidence that the entire reference has been faithfully recreated. The user rejected the intermediate, incorrectly assembled presentation; see `design-qa.md` for the current blocked acceptance state.
+
+- `public/assets/reference-machine-body-v1.png`: static body, 1536 × 1024 RGBA. Prompt and bounds: `docs/asset-prompts-reference-machine.md`.
+- `public/assets/reference-carriage-v1.png`: independent platen/knobs/lever, 2172 × 724 RGBA. Prompt and bounds: `docs/asset-prompts-reference-carriage.md`.
+- `public/assets/reference-room-v1.png`: empty wall and desk, 1672 × 941 RGB. Full-viewport backdrop, not part of the moving mechanism.
+
+Room prompt (built-in image_gen, supplied frame as the edit reference):
+
+> Use case: precise-object-edit. Create a clean BACKGROUND PLATE for an interactive typewriter app from this reference frame. Preserve only the warm dark brown softly mottled wall and wooden desk plane, in the exact understated smooth rendered style and colors of the reference. Remove the ENTIRE typewriter, paper, shadows from objects, all letters, UI, branding and watermark. No objects at all, no typography at all. The wall fills the upper 80 percent and the worn brown wooden desktop occupies the bottom 20 percent with horizontal back edge. Broad soft warm illumination in the center, gently darker edges, but no black frame or black bars. Create a widescreen 16:9 landscape background extending the existing wall and desk naturally to both sides. Fine subtle tactile texture, not excessive scratches, not photographic room, no furniture above desk. This asset will fill the full browser viewport behind a separate machine. Output just the empty environment.
+
+
+### 2026-09-22 independent mechanical rebuild
+
+The mechanical close-up now renders the body and keys in `src/ReferenceMachine.jsx`, using the source-frame measurements in `src/referenceGeometry.js`. The reference has eight visible rods on each side. The moving carriage is a separate canvas sharing one translating parent with the A4 paper; there is no duplicated or clipped machine photograph. `reference-machine-body-v1.png` and `reference-carriage-v1.png` remain only as rejected historical candidates, not live scene assets. `reference-room-v1.png` supplies the surrounding room. Paper scans and existing mechanical audio are unchanged.
+
+English sheets use the reference's large type and 56-frame-pixel line pitch. Sheets beginning with Chinese use the existing compact 33-line layout. A sheet retains its layout across reload, review and PNG export; unversioned saved manuscripts retain compact spacing.
+
+### 2026-09-22 material variants
+
+The five close-up finishes are palette configurations in `src/machineVariants.js`; they do not contain geometry, layout or depth overrides. Physical models are independently defined in `src/machineModels.js` and rendered by `src/ReferenceMachine.jsx`. The selector thumbnails call the actual renderer with the selected model and finish. No new generated visual assets were added for these editions. Background tint applies only to the room, never to the paper or printed ink.
+
+The paper-mouth clip now remains active during ejection. Moving rods render behind the opaque spool, basket cover and guide layers. The platen edge and complete bail stroke/shadow band leave the active ink envelope clear. Safari evidence and the pixel-check report are in `output/variant-qa-2026-09-22/`.
+
+### 2026-09-22 legible ribbon impressions
+
+The user rejected both blurred, obstructed text and the overly clean vector-only correction. `src/inkTypography.js` now describes each glyph's seeded pressure, irregular fiber voids, slight ink spread and small alignment variation. `src/InkGlyph.jsx` renders that impression as scalable text with a luminance mask; PNG export paints the same normalized paths at final resolution. This replaces the older repeated-offset painting and drop-shadow filters. The stock image is unchanged.
+
+The guide now sits below the whole active line. A ribbon vibrator raises the ribbon for the strike and lowers it afterward. The mechanical close-up is larger at the default viewport to keep Chinese text readable. Evidence: `output/text-clarity-2026-09-22/`.
+
+### 2026-09-22 writer desk retired
+
+The user removed the writer-desk feature. Its rendering branch, scene selector and `src/deskScenes.js` are removed; the application now always mounts the mechanical close-up. Earlier desk asset notes describe historical experiments and do not imply an available product mode. Old desk preferences are cleared without changing drafts, manuscript storage, stock selection or ink exports.
+
+
+### 2026-09-22 correspondence stamps
+
+Two original transparent engraved stamp assets were generated with the built-in image_gen tool and used without postprocessing:
+
+- `public/assets/post-stamp-road.png`: oxblood engraving of a winding road between hills, warm ivory perforated stock, TYPER / POST lettering, no denomination, country, or watermark.
+- `public/assets/post-stamp-swallow.png`: deep olive engraving of a swallow carrying a letter, the same perforated stock and lettering.
+
+Prompts specified a single isolated 4:5 antique 1930s postage stamp, believable ink engraving and paper fibers, transparent surround, restrained wear, centered full stamp with all perforations visible. These are fictional Typer correspondence stamps, not reproductions of actual postal issues. Existing paper scans are reused in correspondence; long-roll rendering mirrors the scan at each repeat boundary to keep continuity. The same pattern source is used by live writing, roll review and PNG export.

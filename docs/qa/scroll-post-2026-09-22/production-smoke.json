@@ -1,0 +1,12 @@
+{
+  "standaloneIndex": 200,
+  "hasTyper": true,
+  "health": {
+    "ok": true,
+    "service": "Typer Post",
+    "storage": "sqlite"
+  },
+  "register": 200,
+  "restored": "smoke_writer@typer",
+  "allPassed": true
+}

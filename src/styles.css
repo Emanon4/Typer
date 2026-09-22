@@ -52,102 +52,6 @@ button {
   background: #120b07;
 }
 
-.app-shell.view-desk {
-  background: #070604;
-}
-
-.desk-stage {
-  position: fixed;
-  inset: 0;
-  overflow: hidden;
-  isolation: isolate;
-  background: #080605;
-  cursor: text;
-  user-select: none;
-}
-
-.desk-ambient-scene {
-  position: absolute;
-  inset: -5%;
-  z-index: 0;
-  width: 110%;
-  height: 110%;
-  object-fit: cover;
-  filter: blur(24px) brightness(0.5) saturate(0.8);
-  opacity: 0.86;
-  pointer-events: none;
-  transform: scale(1.04);
-}
-
-.desk-canvas {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  z-index: 1;
-  width: min(100vw, 140.55dvh);
-  aspect-ratio: 1487 / 1058;
-  overflow: hidden;
-  box-shadow: 0 0 100px rgba(0, 0, 0, 0.42);
-  transform: translate(-50%, -50%);
-}
-
-.desk-scene {
-  position: absolute;
-  inset: 0;
-  display: block;
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
-  pointer-events: none;
-}
-
-.desk-scene {
-  z-index: 1;
-}
-
-.desk-paper-window {
-  position: absolute;
-  inset: 0;
-  z-index: 2;
-  overflow: hidden;
-  clip-path: inset(0 0 calc(100% - var(--desk-paper-clip)) 0);
-  pointer-events: none;
-}
-
-.desk-paper-sheet {
-  position: absolute;
-  top: var(--desk-paper-top);
-  left: var(--desk-paper-left);
-  width: var(--desk-paper-width);
-  aspect-ratio: 210 / 297;
-  overflow: hidden;
-  color: #241d17;
-  background: transparent;
-  border: 0;
-  box-shadow: none;
-  container-type: inline-size;
-  transition:
-    opacity 180ms ease,
-    transform 180ms ease;
-}
-
-.desk-paper-sheet > .paper-grain {
-  display: none;
-}
-
-.desk-live-ink {
-  position: absolute;
-  inset: 0 4%;
-  z-index: 2;
-  width: 92%;
-  container-type: inline-size;
-  mix-blend-mode: multiply;
-  transform: translate3d(var(--desk-carriage-x), var(--desk-feed-y), 0);
-  transition: transform 76ms cubic-bezier(0.2, 0.8, 0.34, 1);
-  will-change: transform;
-}
-
-.desk-typebar-strike,
 .typebar-strike {
   position: absolute;
   inset: 0;
@@ -167,7 +71,6 @@ button {
   pointer-events: none;
 }
 
-.desk-typebar-strike::after,
 .typebar-strike::after {
   position: absolute;
   top: calc(var(--bar-strike-y) - 0.35%);
@@ -181,109 +84,6 @@ button {
   box-shadow:
     inset 0 1px rgba(255, 230, 176, 0.45),
     0 2px 3px rgba(0, 0, 0, 0.76);
-}
-
-.desk-stage.is-returning .desk-live-ink {
-  transition-duration: 820ms;
-  transition-timing-function: cubic-bezier(0.18, 0.86, 0.28, 1.03);
-}
-
-.desk-stage.is-ejecting .desk-paper-sheet {
-  opacity: 0;
-  transform: translateY(-86%) rotate(-0.3deg);
-  transition:
-    transform 720ms cubic-bezier(0.17, 0.72, 0.3, 1),
-    opacity 520ms ease 100ms;
-}
-
-.desk-typebar-strike {
-  z-index: 3;
-  transform-origin: var(--bar-origin-x, 50%) var(--bar-origin-y, 60%);
-  animation: typebar-hit 132ms cubic-bezier(0.17, 0.84, 0.28, 1) both;
-}
-
-.desk-stage.is-hit .desk-scene {
-  animation: desk-machine-thrum 82ms steps(2, end) both;
-}
-
-.desk-key-hotspots {
-  position: absolute;
-  inset: 0;
-  z-index: 4;
-  pointer-events: none;
-}
-
-.desk-key-hotspot {
-  position: absolute;
-  width: 2.55%;
-  aspect-ratio: 1.12 / 1;
-  opacity: 0;
-  background: rgba(8, 6, 4, 0.78);
-  border-radius: 50%;
-  box-shadow:
-    inset 0 4px 6px rgba(0, 0, 0, 0.88),
-    0 0 7px rgba(208, 170, 96, 0.28);
-  transform: translate(-50%, -50%) scale(0.92);
-}
-
-.desk-key-hotspot.active {
-  opacity: 0.84;
-  animation: key-press 90ms cubic-bezier(0.22, 0.8, 0.32, 1) both;
-}
-
-.desk-brand-lockup {
-  position: fixed;
-  top: clamp(18px, 2.7vh, 34px);
-  left: clamp(20px, 2.8vw, 46px);
-  z-index: 20;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  color: rgba(244, 229, 199, 0.9);
-  text-shadow: 0 2px 16px rgba(0, 0, 0, 0.72);
-  pointer-events: none;
-}
-
-.desk-brand-name {
-  font-family: "Special Elite", "Courier New", monospace;
-  font-size: clamp(24px, 2.35vw, 40px);
-  letter-spacing: 0.03em;
-}
-
-.desk-slogan {
-  color: rgba(236, 219, 186, 0.7);
-  font-family: "Songti SC", "STSong", serif;
-  font-size: clamp(10px, 0.82vw, 13px);
-  letter-spacing: 0.12em;
-}
-
-.desk-quick-actions {
-  position: fixed;
-  top: clamp(20px, 2.8vh, 35px);
-  right: clamp(20px, 2.7vw, 44px);
-  z-index: 22;
-  display: flex;
-  gap: 9px;
-}
-
-.glass-control {
-  min-height: 36px;
-  padding: 0 18px;
-  color: rgba(242, 225, 192, 0.86);
-  background: rgba(19, 13, 9, 0.58);
-  border: 1px solid rgba(213, 174, 105, 0.42);
-  border-radius: 999px;
-  box-shadow:
-    0 5px 20px rgba(0, 0, 0, 0.32),
-    inset 0 1px rgba(255, 239, 202, 0.08);
-  backdrop-filter: blur(14px) saturate(0.8);
-  cursor: pointer;
-}
-
-.glass-control:hover,
-.glass-control:focus-visible {
-  color: #f5dfaa;
-  border-color: rgba(228, 190, 119, 0.72);
 }
 
 .workbench-panel {
@@ -335,7 +135,6 @@ button {
 }
 
 .workbench-header button,
-.mode-options button,
 .workbench-tools button {
   min-height: 34px;
   color: rgba(239, 219, 182, 0.78);
@@ -361,70 +160,11 @@ button {
   letter-spacing: 0.14em;
 }
 
-.mode-options {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px;
-}
-
-.mode-options button.selected,
 .workbench-tools button:hover,
 .workbench-header button:hover {
   color: #2d1b0d;
   background: #c1a163;
   border-color: rgba(245, 216, 156, 0.82);
-}
-
-.visual-options {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 9px;
-}
-
-.visual-options button {
-  min-width: 0;
-  padding: 7px;
-  overflow: hidden;
-  color: rgba(231, 210, 175, 0.72);
-  text-align: left;
-  background: rgba(17, 11, 8, 0.82);
-  border: 1px solid rgba(166, 124, 66, 0.34);
-  border-radius: 6px;
-  cursor: pointer;
-}
-
-.visual-options button.selected {
-  color: #f0ddb8;
-  background: rgba(57, 36, 22, 0.96);
-  border-color: rgba(232, 192, 116, 0.9);
-  box-shadow: 0 0 0 2px rgba(190, 149, 78, 0.14);
-}
-
-.visual-options img {
-  display: block;
-  width: 100%;
-  aspect-ratio: 1.405 / 1;
-  margin-bottom: 7px;
-  object-fit: cover;
-  border-radius: 3px;
-}
-
-.visual-options span,
-.visual-options small {
-  display: block;
-}
-
-.visual-options span {
-  margin-bottom: 3px;
-  font-family: "Songti SC", "STSong", serif;
-  font-size: 11px;
-  letter-spacing: 0.05em;
-}
-
-.visual-options small {
-  color: rgba(197, 158, 92, 0.58);
-  font-size: 8px;
-  line-height: 1.4;
 }
 
 .workbench-tools {
@@ -447,57 +187,66 @@ button {
   opacity: 0.42;
 }
 
-.desk-writer-status {
-  position: fixed;
-  right: clamp(20px, 2.8vw, 46px);
-  bottom: clamp(18px, 2.6vh, 34px);
-  z-index: 20;
-  color: rgba(236, 216, 179, 0.48);
-  font-family: "Songti SC", "STSong", serif;
-  font-size: clamp(9px, 0.72vw, 12px);
-  letter-spacing: 0.1em;
-  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.8);
-}
-
-.desk-writer-status.focused {
-  color: rgba(243, 225, 190, 0.82);
-}
-
-@keyframes desk-machine-thrum {
-  0%,
-  100% {
-    transform: translateY(0);
-  }
-  50% {
-    transform: translateY(0.12%);
-  }
-}
-
 .typewriter-stage {
-  position: relative;
-  width: min(100vw, 150dvh);
-  max-width: 1536px;
-  aspect-ratio: 3 / 2;
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100dvh;
   overflow: hidden;
   isolation: isolate;
-  background: #2c1a10;
-  box-shadow: 0 0 90px rgba(0, 0, 0, 0.62);
+  background: #3c3020;
   cursor: text;
   user-select: none;
 }
 
-.machine-base {
+.closeup-environment {
   position: absolute;
   inset: 0;
-  display: block;
   width: 100%;
-  height: 100%;
+  height: 108%;
+  object-fit: fill;
+  pointer-events: none;
+}
+
+/* Only the calibrated mechanism has an aspect ratio. The room and controls
+   belong to the viewport, so there can be no letterbox or side rails. */
+.mechanical-rig {
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  width: min(146vw, 125dvh);
+  aspect-ratio: 5 / 4;
+  transform: translateX(-50%);
+}
+
+.machine-base {
+  position: absolute;
+  top: 43.8167%;
+  left: 16.8%;
+  z-index: 3;
+  display: block;
+  width: 66.4%;
+  height: auto;
   object-fit: contain;
   pointer-events: none;
 }
 
-.machine-base {
+.carriage-assembly {
+  position: absolute;
+  top: 37.94%;
+  left: 11.455%;
   z-index: 1;
+  width: var(--carriage-width);
+  height: auto;
+  pointer-events: none;
+  transform: translate3d(var(--carriage-x), 0, 0);
+  transition: transform 76ms cubic-bezier(0.2, 0.8, 0.34, 1);
+  will-change: transform;
+}
+
+.is-returning .carriage-assembly {
+  transition-duration: 820ms;
+  transition-timing-function: cubic-bezier(0.18, 0.86, 0.28, 1.03);
 }
 
 .paper-window {
@@ -505,23 +254,23 @@ button {
   inset: 0;
   z-index: 2;
   overflow: hidden;
-  clip-path: inset(0 0 52.35% 0);
+  clip-path: inset(0 0 calc(100% - var(--paper-clip-bottom)) 0);
   pointer-events: none;
 }
 
 .paper-sheet {
   position: absolute;
-  left: 27.5%;
-  top: 34.2%;
-  width: 45%;
-  height: 95.46%;
+  left: var(--live-paper-left);
+  top: var(--live-paper-top);
+  width: var(--live-paper-width);
+  height: var(--live-paper-height);
   container-type: inline-size;
   overflow: hidden;
   color: #241d17;
   background: var(--paper-base, #f1e8d4);
-  border: 1px solid rgba(101, 76, 45, 0.32);
+  border: 0;
   box-shadow:
-    0 1.4% 3% rgba(0, 0, 0, 0.34),
+    inset 0 0 0 1px rgba(101, 76, 45, 0.32),
     inset 0 0 18px rgba(106, 74, 35, 0.045);
   transform-origin: 50% 100%;
 }
@@ -563,9 +312,9 @@ button {
   position: absolute;
   top: 0;
   bottom: 0;
-  left: 4%;
+  left: var(--ink-track-left);
   z-index: 2;
-  width: 92%;
+  width: var(--ink-track-width);
   container-type: inline-size;
 }
 
@@ -580,22 +329,18 @@ button {
   position: absolute;
   top: 0;
   display: block;
-  width: 3.2cqw;
-  height: 3.05cqw;
-  transform: translateY(var(--ink-lift)) rotate(var(--ink-rotate));
-  transform-origin: 25% 60%;
-  animation: ink-land 82ms steps(2, end) both;
+  width: var(--glyph-width);
+  height: var(--glyph-height);
+  animation: none;
   pointer-events: none;
 }
 
-.ink-canvas {
+.ink-vector {
   display: block;
   width: 100%;
   height: 100%;
   mix-blend-mode: multiply;
-  filter:
-    drop-shadow(0.22px 0.32px rgba(255, 250, 232, 0.35))
-    drop-shadow(-0.12px -0.12px rgba(94, 70, 44, 0.16));
+  overflow: visible;
 }
 
 .ink-accessible {
@@ -627,12 +372,12 @@ button {
 
 .paper-bail {
   position: absolute;
-  top: 44.1%;
-  left: 25.5%;
+  top: var(--bail-top);
+  left: var(--bail-left);
   z-index: 4;
   display: block;
-  width: 49%;
-  height: auto;
+  width: var(--bail-width);
+  height: var(--bail-height);
   pointer-events: none;
   transform: translate3d(var(--bail-x), 0, 0);
   transition: transform 76ms cubic-bezier(0.2, 0.8, 0.34, 1);
@@ -644,10 +389,37 @@ button {
   transition-timing-function: cubic-bezier(0.18, 0.86, 0.28, 1.03);
 }
 
+.paper-bail-rod {
+  position: absolute;
+  inset: 25% 0;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #d4ceb6, #8c8877 45%, #4c493e 75%, #a39d88);
+}
+
+/* Sample the original rubber rollers at their natural 92:40 proportions.
+   Stretching the entire photograph to the narrow row gap crushed them flat. */
+.paper-bail-roller {
+  position: absolute;
+  top: 0;
+  left: 25%;
+  height: 100%;
+  aspect-ratio: 92 / 40;
+  background-image: url("/assets/paper-bail-reference.png");
+  background-size: 1641.30435% 100%;
+  background-position: 23.5543% 0;
+  background-repeat: no-repeat;
+  transform: translateX(-50%);
+}
+
+.paper-bail-roller.right {
+  left: 75%;
+  background-position: 76.4457% 0;
+}
+
 .typebar-strike {
   z-index: 5;
   transform-origin: var(--bar-origin-x, 50%) var(--bar-origin-y, 69.2%);
-  animation: typebar-hit 132ms cubic-bezier(0.17, 0.84, 0.28, 1) both;
+  animation: typebar-hit var(--strike-duration) linear both;
 }
 
 .return-lever-motion {
@@ -699,8 +471,8 @@ button {
 
 .key-hotspot {
   position: absolute;
-  width: 2.9%;
-  aspect-ratio: 1.12 / 1;
+  width: 3.8%;
+  aspect-ratio: 1;
   border-radius: 50%;
   opacity: 0;
   background: rgba(13, 8, 5, 0.76);
@@ -718,10 +490,10 @@ button {
 
 .space-hotspot {
   position: absolute;
-  left: 34.5%;
-  top: 85.45%;
-  width: 31%;
-  height: 2.5%;
+  left: 33.9%;
+  top: 91%;
+  width: 32.2%;
+  height: 2.7%;
   border-radius: 999px;
   opacity: 0;
   background: rgba(10, 7, 5, 0.72);
@@ -757,8 +529,8 @@ button {
 
 .brand-lockup {
   position: absolute;
-  top: 2.3%;
-  left: 2.35%;
+  top: 22px;
+  left: 26px;
   z-index: 10;
   display: flex;
   flex-direction: column;
@@ -768,9 +540,9 @@ button {
 }
 
 .brand-name {
-  font-family: "Songti SC", "STSong", serif;
-  font-size: clamp(11px, 1.02vw, 16px);
-  font-weight: 600;
+  font-family: "Special Elite", "Courier New", monospace;
+  font-size: 16px;
+  font-weight: 400;
   letter-spacing: 0.3em;
 }
 
@@ -784,11 +556,25 @@ button {
 
 .stage-actions {
   position: absolute;
-  top: 2.05%;
-  right: 2.2%;
+  top: 18px;
+  right: 24px;
   z-index: 11;
   display: flex;
-  gap: 0.7vw;
+  gap: 10px;
+}
+
+.workbench-trigger {
+  padding: 0 12px;
+  color: #d5c49e;
+  font-size: 12px;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+}
+
+.workbench-trigger:focus-visible {
+  outline: 1px solid #e9d29d;
+  outline-offset: 3px;
 }
 
 .brass-button,
@@ -813,7 +599,8 @@ button {
 }
 
 .brass-button {
-  padding: 0 1.35em;
+  min-width: 90px;
+  padding: 0 1.55em;
 }
 
 .brass-button:hover,
@@ -945,20 +732,23 @@ button {
 
 .final-copy {
   position: absolute;
-  inset: 8.5% 9.5%;
+  top: 0;
+  bottom: 0;
+  left: var(--ink-track-left);
+  width: var(--ink-track-width);
   z-index: 2;
   container-type: inline-size;
 }
 
 .final-line {
-  position: relative;
+  position: absolute;
   width: 100%;
   height: 4.35cqw;
 }
 
 .final-ink {
-  width: 3.72cqw;
-  height: 3.68cqw;
+  width: var(--glyph-width);
+  height: var(--glyph-height);
   animation: none;
 }
 
@@ -1344,11 +1134,11 @@ button {
   }
   38% {
     opacity: 1;
-    transform: perspective(900px) translateY(-3.7%) rotateX(-3deg) scaleY(1.08);
+    transform: perspective(900px) rotateX(0deg) scaleY(1);
   }
   58% {
     opacity: 0.9;
-    transform: perspective(900px) translateY(-3.2%) rotateX(0) scaleY(1.04);
+    transform: perspective(900px) rotateX(0deg) scaleY(1);
   }
   100% {
     opacity: 0;
@@ -1432,60 +1222,43 @@ button {
 @media (max-aspect-ratio: 3 / 2) {
   .typewriter-stage {
     width: 100vw;
-    max-width: none;
   }
 }
 
 @media (max-width: 720px) {
   .app-shell {
-    align-items: start;
-    padding-top: 20dvh;
-  }
-
-  .app-shell.view-desk {
     padding-top: 0;
   }
 
   .typewriter-stage {
     width: 100vw;
-    flex: none;
-    left: auto;
-    transform: none;
   }
 
   .brand-lockup {
-    left: 7%;
-  }
-
-  .stage-actions {
-    right: 3.5%;
-    gap: 4px;
-  }
-
-  .desk-brand-lockup {
-    top: 16px;
+    top: 19px;
     left: 16px;
   }
 
-  .desk-brand-name {
-    font-size: 22px;
+  .stage-actions {
+    right: 12px;
+    gap: 4px;
   }
 
-  .desk-slogan {
-    max-width: 180px;
-    font-size: 8px;
+  .brass-button {
+    min-width: 58px;
+    padding-inline: 10px;
   }
 
-  .desk-quick-actions {
-    top: 16px;
-    right: 14px;
-    gap: 5px;
+  .machine-number {
+    display: none;
   }
 
-  .glass-control {
-    min-height: 30px;
-    padding-inline: 11px;
+  .instruction-line {
+    max-width: calc(100vw - 32px);
     font-size: 9px;
+    text-align: center;
+    white-space: normal;
+    line-height: 1.7;
   }
 
   .workbench-panel {
@@ -1504,26 +1277,8 @@ button {
     font-size: 23px;
   }
 
-  .visual-options {
-    gap: 6px;
-  }
-
-  .visual-options button {
-    padding: 5px;
-  }
-
-  .visual-options span {
-    font-size: 9px;
-  }
-
   .workbench-tools {
     grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-
-  .desk-writer-status {
-    right: 16px;
-    bottom: 16px;
-    font-size: 8px;
   }
 
   .writer-status,
@@ -1601,10 +1356,6 @@ button {
     font-size: 12px;
     letter-spacing: 0.1em;
     text-align: center;
-  }
-
-  .view-desk .mobile-note {
-    display: none;
   }
 
   .final-sheet {

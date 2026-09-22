@@ -2,6 +2,15 @@ node_modules/
 dist/
 .DS_Store
 *.log
+.typer-data/
+output/*/qa-post.sqlite*
+/output/
+.playwright-cli/
+
+# Local source recordings and redundant checkpoint copies are not release files.
+/飞书20260727-181415.mp4
+output/**/before/
+output/**/previous-*.md
 
 # Local visual-analysis working sets. Final evidence remains in reference/qa/.
 /qa/

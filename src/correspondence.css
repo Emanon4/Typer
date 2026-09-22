@@ -1,0 +1,774 @@
+.writing-modes {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 25px;
+}
+.writing-modes button {
+  background: #201b15;
+  border: 1px solid #6f6044;
+  color: #d9c39a;
+  padding: 15px 9px;
+  text-align: left;
+  font:
+    16px Georgia,
+    serif;
+  border-radius: 3px;
+  cursor: pointer;
+}
+.writing-modes button[aria-pressed="true"] {
+  border-color: #bca678;
+  background: #3a3020;
+}
+.writing-modes small {
+  display: block;
+  font-size: 10px;
+  margin-top: 7px;
+  opacity: 0.65;
+}
+.continuous-roll .paper-grain,
+.final-roll .paper-grain {
+  background-repeat: repeat-y;
+  background-size: 100% auto;
+  background-position: center var(--roll-paper-offset, 0px);
+}
+.continuous-roll .reference-paper,
+.final-roll {
+  container-type: inline-size;
+}
+.roll-reader {
+  width: min(72vw, 510px);
+  height: min(70dvh, 690px);
+  overflow: auto;
+  overscroll-behavior: contain;
+  border: 1px solid #81745b;
+  box-shadow: 0 22px 60px #0007;
+}
+.roll-reader .final-roll {
+  width: 100%;
+  min-height: 100%;
+  aspect-ratio: auto;
+  max-height: none;
+  border: 0;
+  transform: none;
+  box-shadow: none;
+}
+.review-content:has(.roll-reader) {
+  width: min(95vw, 940px);
+}
+.review-actions {
+  flex-wrap: wrap;
+  justify-content: center;
+}
+.review-actions .fresh-sheet-button {
+  min-width: 130px;
+  padding: 0.8em 1.2em;
+}
+.post-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 70;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  color: #413527;
+  font-family: Georgia, "Songti SC", serif;
+}
+.post-backdrop {
+  position: absolute;
+  inset: 0;
+  background: #100c09cf;
+  backdrop-filter: blur(8px);
+}
+.post-office {
+  position: relative;
+  width: min(1010px, 96vw);
+  max-height: 91dvh;
+  display: flex;
+  flex-direction: column;
+  background: #dfcfad url("/assets/paper-stock-real-v2.png") center/cover;
+  border: 1px solid #9c8763;
+  box-shadow:
+    0 30px 100px #000b,
+    0 0 0 5px #251e17,
+    0 0 0 6px #716045;
+  border-radius: 3px;
+  overflow: hidden;
+}
+.post-header {
+  display: flex;
+  align-items: center;
+  gap: 25px;
+  padding: 25px 30px 21px;
+  border-bottom: 1px solid #8d775f5e;
+}
+.post-header p {
+  font:
+    9px "Special Elite",
+    monospace;
+  letter-spacing: 0.3em;
+  margin: 0 0 8px;
+  color: #816c50;
+}
+.post-header h2 {
+  margin: 0;
+  font-size: 29px;
+  letter-spacing: 0.3em;
+  font-weight: 500;
+}
+.post-motto {
+  font-size: 12px;
+  letter-spacing: 0.13em;
+  color: #7d6c55;
+}
+.post-header > .post-text-button {
+  margin-left: auto;
+}
+.post-overlay button,
+.post-overlay input,
+.post-overlay select {
+  font: inherit;
+}
+.post-overlay button {
+  cursor: pointer;
+}
+.post-overlay button:disabled {
+  opacity: 0.45;
+  cursor: wait;
+}
+.post-overlay button:focus-visible,
+.post-overlay input:focus-visible,
+.post-overlay select:focus-visible {
+  outline: 2px solid #754537;
+  outline-offset: 3px;
+}
+.post-text-button {
+  border: 0;
+  background: transparent;
+  color: #715844;
+  padding: 7px 0;
+  font-size: 12px !important;
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+.post-body {
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  min-height: 480px;
+  overflow: hidden;
+}
+.post-sidebar {
+  display: flex;
+  flex-direction: column;
+  padding: 28px 22px;
+  background: #7560480a;
+  border-right: 1px solid #8d775f5e;
+}
+.postal-identity {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 24px;
+}
+.postal-identity strong {
+  font-size: 20px;
+  font-weight: 500;
+}
+.postal-identity span {
+  font:
+    12px "Special Elite",
+    monospace;
+}
+.postal-identity small {
+  font-size: 11px;
+  color: #8b765d;
+  margin-top: 8px;
+}
+.post-primary {
+  background: #4a4834;
+  color: #f1e6cc;
+  border: 1px solid #333623;
+  padding: 12px 19px;
+  border-radius: 2px;
+  font-size: 13px !important;
+  box-shadow: inset 0 1px #eee1c333;
+}
+.post-sidebar nav {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 24px;
+}
+.post-sidebar nav button {
+  border: 0;
+  border-left: 2px solid transparent;
+  background: transparent;
+  text-align: left;
+  padding: 12px 10px;
+  color: #7a654c;
+  font-size: 14px;
+}
+.post-sidebar nav button.active {
+  border-left-color: #865647;
+  background: #78603e10;
+  color: #463827;
+}
+.post-sidebar-note {
+  font-size: 11px;
+  line-height: 1.8;
+  color: #937e61;
+  margin-top: auto;
+  padding-top: 30px;
+}
+.sign-out {
+  text-align: left;
+  font-size: 10px !important;
+}
+.post-content {
+  padding: 27px 32px;
+  overflow: auto;
+  overscroll-behavior: contain;
+  min-height: 400px;
+}
+.post-section-title {
+  margin-bottom: 25px;
+}
+.post-section-title h3 {
+  font-size: 22px;
+  font-weight: 400;
+  margin: 0 0 10px;
+}
+.post-section-title p {
+  font-size: 12px;
+  color: #887056;
+  line-height: 1.8;
+}
+.post-section-title:has(> button) {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 15px;
+}
+.postal-letter-list {
+  display: grid;
+  gap: 12px;
+}
+.postal-letter {
+  display: flex;
+  gap: 19px;
+  align-items: center;
+  border: 1px solid #9c846053;
+  background: #f4e9cc60;
+  padding: 16px 20px;
+  text-align: left;
+  color: #57412c;
+  box-shadow: 0 3px 6px #69542e0b;
+}
+.postal-letter:hover {
+  background: #f6eddba8;
+  border-color: #876b48;
+}
+.postal-letter img {
+  width: 43px;
+  height: 54px;
+  object-fit: contain;
+}
+.postal-letter div {
+  flex: 1;
+  min-width: 0;
+}
+.postal-letter strong,
+.postal-letter span,
+.postal-letter small {
+  display: block;
+}
+.postal-letter strong {
+  font-size: 15px;
+  font-weight: 500;
+}
+.postal-letter span {
+  font-size: 13px;
+  margin: 7px 0;
+  line-height: 1.6;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.postal-letter small {
+  font-size: 10px;
+  color: #917657;
+}
+.post-content:has(.postal-letter-list):not(:has(.post-section-title))
+  .postal-letter {
+  display: block;
+}
+.postal-empty {
+  text-align: center;
+  padding: 40px 0;
+  color: #8b765b;
+}
+.postal-empty img {
+  width: 80px;
+  transform: rotate(-8deg);
+  opacity: 0.7;
+  margin-bottom: 15px;
+}
+.postal-empty p {
+  font-size: 14px;
+  line-height: 1.9;
+}
+.postal-empty small {
+  font-size: 11px;
+}
+.post-notice {
+  padding: 11px 28px;
+  margin: 0;
+  font-size: 13px;
+  background: #62705118;
+  border-bottom: 1px solid #62705135;
+}
+.post-notice.error {
+  background: #903e2d15;
+  color: #803421;
+  border-color: #903e2d35;
+}
+.post-auth {
+  width: min(620px, 94vw);
+}
+.post-auth-content {
+  padding: 22px 56px 28px;
+  overflow: auto;
+  position: relative;
+}
+.post-auth-content h3 {
+  font-size: 22px;
+  font-weight: 400;
+  margin: 10px 0;
+}
+.post-auth-content > p {
+  font-size: 12px;
+  color: #8b7355;
+  line-height: 1.8;
+  max-width: 330px;
+}
+.auth-stamp {
+  float: right;
+  width: 66px;
+  transform: rotate(7deg);
+  margin-left: 12px;
+}
+.post-form {
+  display: grid;
+  gap: 18px;
+  margin: 24px 0 14px;
+}
+.post-overlay label {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  font-size: 13px;
+  color: #654b34;
+}
+.post-overlay input,
+.post-overlay select {
+  width: 100%;
+  border: 0;
+  border-bottom: 1px solid #8c785ba6;
+  background: #fff8e63b;
+  border-radius: 0;
+  color: #34291d;
+  padding: 11px 10px;
+  box-sizing: border-box;
+  min-width: 0;
+}
+.post-overlay input::placeholder {
+  color: #a69278;
+  font-size: 12px;
+}
+.post-overlay label small {
+  font-size: 10px;
+  color: #8c775e;
+  line-height: 1.7;
+}
+.postal-address-field {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.postal-address-field input {
+  flex: 1;
+}
+.postal-address-field > span {
+  font:
+    13px "Special Elite",
+    monospace;
+  color: #8b735b;
+}
+.postal-envelope {
+  position: relative;
+  aspect-ratio: 1.75;
+  min-height: 230px;
+  width: 100%;
+  background: #eadbc0 url("/assets/reference-paper-stock.png") center/cover;
+  border: 1px solid #b7a17b;
+  box-shadow:
+    0 9px 18px #51402222,
+    inset 0 0 35px #8061420c;
+  margin: 20px 0 22px;
+  color: #574534;
+  overflow: hidden;
+}
+.envelope-from {
+  position: absolute;
+  left: 7%;
+  top: 10%;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  max-width: 55%;
+  font-size: 13px;
+}
+.envelope-from small {
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  color: #947e61;
+}
+.envelope-stamp {
+  position: absolute;
+  right: 6%;
+  top: 8%;
+  width: 13%;
+  height: 30%;
+  object-fit: contain;
+  transform: rotate(2deg);
+}
+.postal-cancel {
+  position: absolute;
+  right: 13%;
+  top: 15%;
+  border: 2px double #51493277;
+  border-radius: 50%;
+  width: 76px;
+  height: 76px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  transform: rotate(-16deg);
+  color: #51493299;
+  font:
+    9px "Special Elite",
+    monospace;
+  gap: 8px;
+  pointer-events: none;
+}
+.postal-cancel span {
+  letter-spacing: 0.05em;
+}
+.postal-cancel time {
+  font-size: 10px;
+}
+.envelope-to {
+  position: absolute;
+  left: 30%;
+  top: 48%;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-width: 60%;
+  overflow-wrap: anywhere;
+}
+.envelope-to small {
+  font-size: 10px;
+  color: #947e61;
+}
+.envelope-to strong {
+  font-size: 21px;
+  font-weight: 400;
+}
+.envelope-to span {
+  font:
+    12px "Special Elite",
+    monospace;
+  color: #8b7254;
+}
+.envelope-open {
+  position: absolute;
+  right: 6%;
+  bottom: 9%;
+  padding: 7px 12px;
+  font-size: 11px !important;
+  background: transparent;
+  border: 1px solid #957958;
+  color: #715032;
+}
+.post-arrival {
+  font-size: 12px;
+  color: #8d785d;
+  text-align: center;
+}
+.seal-fields {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+.stamp-picker {
+  border: 0;
+  padding: 0;
+  margin: 24px 0;
+  display: flex;
+  gap: 16px;
+}
+.stamp-picker legend {
+  font-size: 12px;
+  margin-bottom: 12px;
+  color: #785d40;
+}
+.stamp-picker button {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  text-align: left;
+  background: transparent;
+  border: 1px solid #9d835653;
+  padding: 10px 18px;
+  color: #715238;
+  flex: 1;
+}
+.stamp-picker button.selected {
+  border-color: #72583b;
+  background: #eee2c166;
+}
+.stamp-picker img {
+  height: 68px;
+  width: 54px;
+  object-fit: contain;
+}
+.stamp-picker small {
+  display: block;
+  font-size: 10px;
+  margin-top: 8px;
+  color: #9b7d59;
+}
+.postal-delay {
+  max-width: 230px;
+}
+.address-confirmation {
+  padding: 17px 0;
+  font-size: 12px;
+  line-height: 1.9;
+  color: #6e5a3e;
+}
+.address-confirmation small {
+  font-size: 10px;
+  color: #8c7657;
+}
+.seal-form > .post-primary {
+  margin: 20px 0;
+}
+.postal-receipt {
+  border: 1px solid #77826366;
+  padding: 20px;
+  background: #7f966c12;
+  margin-bottom: 25px;
+  color: #546343;
+}
+.postal-receipt strong {
+  font-size: 23px;
+  font-weight: 400;
+}
+.postal-receipt p {
+  font-size: 13px;
+  line-height: 1.8;
+}
+.postal-receipt small {
+  font-size: 11px;
+}
+.postal-settings {
+  max-width: 460px;
+}
+.postal-checkbox {
+  flex-direction: row !important;
+  align-items: center;
+}
+.postal-checkbox input {
+  width: auto !important;
+}
+.blocked-addresses {
+  margin-top: 36px;
+  border-top: 1px solid #91745155;
+  padding-top: 20px;
+  font-size: 12px;
+}
+.blocked-addresses form {
+  display: flex;
+  gap: 10px;
+  margin: 15px 0;
+}
+.blocked-addresses button,
+.postal-reading-actions > button:not(.post-primary) {
+  background: transparent;
+  border: 1px solid #957c57;
+  padding: 8px 12px;
+  color: #705337;
+  white-space: nowrap;
+  font-size: 12px;
+}
+.blocked-addresses > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 15px;
+  margin-top: 10px;
+  align-items: center;
+}
+.opened-letter {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.opened-letter > .post-text-button {
+  align-self: flex-start;
+}
+.opened-letter .final-sheet {
+  height: auto;
+  width: min(100%, 490px);
+  aspect-ratio: 210/297;
+  flex: none;
+  box-shadow: 0 12px 25px #55452a22;
+}
+.letter-reading-title {
+  font-size: 12px;
+  color: #8d755a;
+  margin: 20px 0;
+}
+.postal-reading-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin: 25px 0;
+}
+.post-overlay .final-sheet {
+  font-family: inherit;
+}
+@media (max-width: 680px) {
+  .post-overlay {
+    padding: 10px;
+  }
+  .post-office {
+    width: 100%;
+    max-height: 94dvh;
+  }
+  .post-header {
+    padding: 16px 18px;
+    gap: 12px;
+  }
+  .post-motto {
+    display: none;
+  }
+  .post-header h2 {
+    font-size: 24px;
+  }
+  .post-body {
+    grid-template-columns: 1fr;
+    overflow: auto;
+    min-height: 0;
+  }
+  .post-sidebar {
+    padding: 14px 18px;
+    border-right: 0;
+    border-bottom: 1px solid #8d775f5e;
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 10px;
+  }
+  .postal-identity {
+    margin: 0;
+    gap: 5px;
+  }
+  .postal-identity strong {
+    font-size: 15px;
+  }
+  .postal-identity small {
+    margin-top: 0;
+  }
+  .post-sidebar > .post-primary {
+    align-self: center;
+    padding: 10px;
+    font-size: 11px !important;
+  }
+  .post-sidebar nav {
+    grid-column: 1/-1;
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+    gap: 3px;
+    margin: 0;
+  }
+  .post-sidebar nav button {
+    font-size: 11px;
+    padding: 8px;
+  }
+  .post-sidebar-note {
+    display: none;
+  }
+  .sign-out {
+    grid-column: 1/-1;
+    text-align: right;
+    padding: 0;
+    font-size: 10px !important;
+  }
+  .post-content {
+    padding: 22px 18px;
+    overflow: visible;
+    min-height: 380px;
+  }
+  .post-auth-content {
+    padding: 20px 24px;
+  }
+  .post-section-title h3 {
+    font-size: 20px;
+  }
+  .postal-envelope {
+    min-height: 205px;
+  }
+  .seal-fields {
+    grid-template-columns: 1fr;
+    gap: 15px;
+  }
+  .stamp-picker {
+    gap: 8px;
+  }
+  .stamp-picker button {
+    padding: 8px;
+    gap: 7px;
+  }
+  .stamp-picker img {
+    width: 40px;
+    height: 52px;
+  }
+  .postal-cancel {
+    width: 55px;
+    height: 55px;
+    font-size: 7px;
+  }
+  .postal-cancel time {
+    font-size: 8px;
+  }
+  .envelope-to strong {
+    font-size: 18px;
+  }
+  .roll-reader {
+    width: min(88vw, 480px);
+  }
+  .review-actions .fresh-sheet-button {
+    font-size: 11px;
+    min-width: 100px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .post-overlay *,
+  .continuous-roll * {
+    animation-duration: 1ms !important;
+    transition-duration: 1ms !important;
+  }
+}

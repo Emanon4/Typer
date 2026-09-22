@@ -1,15 +1,17 @@
+import { publicAsset } from "./runtimeConfig";
+
 const SAMPLE_URLS = {
-  "key-01": "/assets/audio/key-01.wav",
-  "key-02": "/assets/audio/key-02.wav",
-  "key-03": "/assets/audio/key-03.wav",
-  "key-04": "/assets/audio/key-04.wav",
-  "key-05": "/assets/audio/key-05.wav",
-  "key-06": "/assets/audio/key-06.wav",
-  "key-07": "/assets/audio/key-07.wav",
-  "key-08": "/assets/audio/key-08.wav",
-  space: "/assets/audio/space.wav",
-  carriage: "/assets/audio/carriage.wav",
-  eject: "/assets/audio/eject.wav",
+  "key-01": "assets/audio/key-01.wav",
+  "key-02": "assets/audio/key-02.wav",
+  "key-03": "assets/audio/key-03.wav",
+  "key-04": "assets/audio/key-04.wav",
+  "key-05": "assets/audio/key-05.wav",
+  "key-06": "assets/audio/key-06.wav",
+  "key-07": "assets/audio/key-07.wav",
+  "key-08": "assets/audio/key-08.wav",
+  space: "assets/audio/space.wav",
+  carriage: "assets/audio/carriage.wav",
+  eject: "assets/audio/eject.wav",
 };
 
 const KEY_NAMES = Object.keys(SAMPLE_URLS).filter((name) => name.startsWith("key-"));
@@ -39,7 +41,7 @@ export function createAudioEngine() {
     const ctx = ensure();
     if (!ctx) return Promise.resolve(null);
 
-    const request = fetch(SAMPLE_URLS[name])
+    const request = fetch(publicAsset(SAMPLE_URLS[name]))
       .then((response) => {
         if (!response.ok) throw new Error(`Audio sample failed: ${name}`);
         return response.arrayBuffer();

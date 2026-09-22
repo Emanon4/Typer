@@ -1,0 +1,141 @@
+.reference-rig {
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  width: min(120vw, 125dvh);
+  aspect-ratio: 5 / 4;
+  transform: translateX(-50%);
+}
+.reference-carriage {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  transform: translate3d(var(--carriage-x),0,0);
+  transition: transform 76ms cubic-bezier(.2,.8,.34,1);
+  will-change: transform;
+}
+.is-returning .reference-carriage,
+.is-returning .reference-rig .reference-paper {
+  transition-duration: 820ms;
+  transition-timing-function: cubic-bezier(.18,.86,.28,1.03);
+}
+.reference-machine,
+.reference-carriage-hardware {
+  position:absolute;
+  inset:0;
+  width:100%;
+  height:100%;
+  pointer-events:none;
+}
+.reference-machine { z-index:3; }
+.reference-carriage-hardware { z-index:2; }
+.reference-paper-window {
+  position:absolute;
+  inset:0;
+  z-index:1;
+  overflow:hidden;
+  clip-path:inset(0 0 var(--paper-mouth-bottom) 0);
+}
+.reference-rig .reference-paper {
+  left:31.484375%;
+  top:40.91796875%;
+  width:37.03125%;
+  height:65.465401786%;
+  transform:translate3d(0,var(--paper-feed-y),0);
+  transition:transform 76ms cubic-bezier(.2,.8,.34,1);
+  border-radius:1.8px 1.8px 0 0;
+  box-shadow:inset 0 0 0 1px rgba(79,70,43,.16),0 0 5px rgba(243,233,199,.08);
+  will-change:transform;
+}
+/* The paper mouth stays masked during ejection as well as typing. */
+.is-ejecting .reference-rig .reference-paper {
+  opacity:0;
+  transform:translate3d(0,var(--paper-eject-offset),0);
+  transition:transform 720ms cubic-bezier(.2,.6,.22,1),opacity 160ms ease 570ms;
+}
+.reference-rig .ime-input { top:49.21875%; }
+.reference-rig .composition-preview { font-size:var(--glyph-height); }
+
+.closeup-environment { filter: var(--room-filter, none); }
+.closeup-light {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: var(--room-tint, transparent);
+  opacity: var(--room-tint-opacity, 0);
+  mix-blend-mode: color;
+}
+.finish-caption {
+  display: block;
+  margin-top: 12px;
+  color: var(--finish-accent, #c7ac6f);
+  font-size: 10px;
+  letter-spacing: .12em;
+  opacity: .7;
+}
+.finish-options {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 9px;
+}
+.finish-option {
+  min-width: 0;
+  padding: 9px 8px 11px;
+  text-align: left;
+  color: #e7decc;
+  border: 1px solid #77634755;
+  border-radius: 6px;
+  background: #161614;
+  cursor: pointer;
+}
+.finish-option:hover,
+.finish-option:focus-visible,
+.finish-option.selected {
+  border-color: var(--finish-accent);
+  box-shadow: inset 0 0 0 1px var(--finish-accent);
+  outline: none;
+}
+.finish-preview {
+  display: block;
+  width: 100%;
+  aspect-ratio: 704 / 408;
+  margin-bottom: 6px;
+}
+.finish-option span,
+.finish-option small { display: block; }
+.finish-option span { font-size: 12px; margin-bottom: 5px; }
+.finish-option small { font-size: 9px; line-height: 1.5; color: #b7ac96; }
+.machine-model-options {
+  display: grid;
+  gap: 9px;
+}
+.machine-model-option {
+  display: grid;
+  grid-template-columns: 132px 1fr;
+  column-gap: 16px;
+  align-content: center;
+  padding: 10px 12px;
+  text-align: left;
+  border: 1px solid #77634755;
+  border-radius: 6px;
+  color: #e7decc;
+  background: #161614;
+  cursor: pointer;
+}
+.machine-model-option .finish-preview { grid-row: 1 / 3; margin: 0; align-self: center; }
+.machine-model-option > span { align-self: end; margin-bottom: 7px; font-size: 13px; }
+.machine-model-option small { font-size: 10px; line-height: 1.6; color: #b7ac96; }
+.machine-model-option:hover,
+.machine-model-option:focus-visible,
+.machine-model-option.selected { border-color: var(--finish-accent, #c7ac6f); box-shadow: inset 0 0 0 1px var(--finish-accent, #c7ac6f); outline: none; }
+.finish-label { margin-top: 24px; }
+.finish-swatches { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+.finish-swatches .finish-option { padding: 9px 4px; text-align: center; }
+.finish-swatches .finish-option > span:not(.finish-swatch) { margin: 0; font-size: 10px; }
+.finish-swatches .finish-option small { display: none; }
+.finish-option .finish-swatch { display: block; width: 28px; height: 28px; margin: 0 auto 8px; border: 2px solid var(--finish-metal); border-radius: 50%; background: var(--finish-shell); }
+@media(max-width: 540px) {
+  .finish-options { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .finish-swatches { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+  .machine-model-option { grid-template-columns: 108px 1fr; column-gap: 10px; }
+}

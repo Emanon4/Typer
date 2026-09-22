@@ -1,5 +1,8 @@
 import { paintInkGlyph } from "./InkGlyph";
-import { MAX_LINES, MAX_LINE_UNITS } from "./typewriterConfig";
+import { getPaperLayout } from "./referenceGeometry";
+import { exportSlices } from "./writingModel";
+import { zipSync, strToU8 } from "fflate";
+import { seamlessRollTexture } from "./rollPaperTexture";
 
 const PAGE_WIDTH = 2480;
 const PAGE_HEIGHT = 3508;
@@ -13,7 +16,7 @@ function loadImage(source) {
   });
 }
 
-function drawCover(context, image, width, height) {
+function drawCover(context, image, width, height, position) {
   const imageRatio = image.naturalWidth / image.naturalHeight;
   const targetRatio = width / height;
   let sourceX = 0;
@@ -26,7 +29,7 @@ function drawCover(context, image, width, height) {
     sourceX = (image.naturalWidth - sourceWidth) / 2;
   } else {
     sourceHeight = image.naturalWidth / targetRatio;
-    sourceY = (image.naturalHeight - sourceHeight) / 2;
+    sourceY = position?.includes("top") ? 0 : (image.naturalHeight - sourceHeight) / 2;
   }
 
   context.drawImage(
@@ -62,29 +65,30 @@ function canvasToBlob(canvas) {
   });
 }
 
-export async function exportPaperPng(model, paper) {
-  await document.fonts?.ready;
-  const texture = await loadImage(paper.asset);
+async function renderSlice(model,paper,texture,slice) {
   const canvas = document.createElement("canvas");
   canvas.width = PAGE_WIDTH;
-  canvas.height = PAGE_HEIGHT;
+  canvas.height = slice.height;
   const context = canvas.getContext("2d", { alpha: false });
 
   context.fillStyle = paper.base;
-  context.fillRect(0, 0, PAGE_WIDTH, PAGE_HEIGHT);
-  drawCover(context, texture, PAGE_WIDTH, PAGE_HEIGHT);
+  context.fillRect(0, 0, PAGE_WIDTH, slice.height);
+  if(model.kind==="scroll") {
+    const textureHeight=PAGE_WIDTH*texture.naturalHeight/texture.naturalWidth;
+    const layout=getPaperLayout(model);
+    const phase=slice.first*PAGE_WIDTH*layout.trackWidth*layout.linePitch/10000;
+    for(let y=-(phase%textureHeight);y<slice.height;y+=textureHeight)context.drawImage(texture,0,y,PAGE_WIDTH,textureHeight);
+  } else drawCover(context, texture, PAGE_WIDTH, PAGE_HEIGHT, paper.backgroundPosition);
 
-  const copyLeft = PAGE_WIDTH * 0.095;
-  const copyTop = PAGE_HEIGHT * 0.085;
-  const copyWidth = PAGE_WIDTH * 0.81;
-  const copyHeight = PAGE_HEIGHT * 0.83;
-  const inkLeft = copyLeft + copyWidth * 0.08;
-  const inkWidth = copyWidth * 0.84;
-  const linePitch = copyHeight / (MAX_LINES + 0.5);
-  const glyphWidth = copyWidth * 0.035;
-  const glyphHeight = copyWidth * 0.035;
+  const layout = getPaperLayout(model);
+  const copyWidth = PAGE_WIDTH * layout.trackWidth / 100;
+  const copyLeft = PAGE_WIDTH * layout.trackLeft / 100;
+  const copyTop = slice.top;
+  const linePitch = copyWidth * layout.linePitch / 100;
+  const glyphWidth = copyWidth * layout.glyphWidth / 100;
+  const glyphHeight = copyWidth * layout.glyphHeight / 100;
 
-  for (const [lineIndex, line] of model.lines.entries()) {
+  for (const [lineIndex, line] of model.lines.slice(slice.first,slice.last).entries()) {
     for (const glyph of line.glyphs) {
       const stamp = document.createElement("canvas");
       paintInkGlyph(stamp, glyph, {
@@ -92,14 +96,32 @@ export async function exportPaperPng(model, paper) {
         cssHeight: glyphHeight,
         ratio: 1,
       });
-      const x = inkLeft + (glyph.x / MAX_LINE_UNITS) * inkWidth;
+      const x = copyLeft + copyWidth * (layout.glyphStart + glyph.x / layout.maxUnits * layout.glyphRange) / 100;
       const y = copyTop + lineIndex * linePitch;
       context.drawImage(stamp, x, y, glyphWidth, glyphHeight);
     }
   }
 
-  const blob = await canvasToBlob(canvas);
-  const fileName = makeFileName(paper);
+  const blob=await canvasToBlob(canvas);
+  canvas.width=canvas.height=1;
+  return blob;
+}
+
+export async function exportPaperPng(model,paper) {
+  await document.fonts?.ready;
+  const texture=await loadImage(model.kind==="scroll"?await seamlessRollTexture(paper.asset):paper.asset),slices=exportSlices(model);
+  let blob,fileName=makeFileName(paper);
+  if(slices.length===1)blob=await renderSlice(model,paper,texture,slices[0]);
+  else {
+    const files={};
+    for(const [i,slice] of slices.entries()) {
+      const part=await renderSlice(model,paper,texture,slice);
+      files[`Typer-长卷-${String(i+1).padStart(3,"0")}.png`]=new Uint8Array(await part.arrayBuffer());
+    }
+    files["长卷说明.txt"]=strToU8(`Typer 凯鲁亚克长卷\n共 ${model.lines.length} 行，依文件编号顺序展开。\n图像采用与写作时相同的纸张、字形与墨迹种子。\n`);
+    blob=new Blob([zipSync(files,{level:0})],{type:"application/zip"});
+    fileName=fileName.replace(/\.png$/,"-长卷.zip");
+  }
   const url = URL.createObjectURL(blob);
   const anchor = document.createElement("a");
   anchor.href = url;

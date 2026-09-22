@@ -1,0 +1,11 @@
+{
+  "passed": true,
+  "lines": 10000,
+  "renderedRows": 33,
+  "target": 486.8142588476563,
+  "actual": 486.59197998046875,
+  "error": -0.22227886718752643,
+  "lastSeed": 160429,
+  "existingA4Lines": 0,
+  "existingA4Glyphs": 0
+}
