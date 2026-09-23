@@ -220,6 +220,9 @@ export function App() {
     nextModel = { ...nextModel, paperId: paperRef.current };
     savedModel = { ...savedModel, paperId: paperRef.current };
     modelRef.current = nextModel;
+    // A stored manuscript is a snapshot. Any subsequent carriage or ink
+    // change makes the sheet/roll eligible to be stored again.
+    setSavedManuscriptId("");
     if(savedModel.kind === "scroll" || savedModel.kind === "letter") {
       savePendingRef.current=saveDocument(savedModel,{paperId:paperRef.current}).catch(()=>{setStatus("本机存储空间不足，请先导出稿件；当前内容仍在纸上");});
     } else localStorage.setItem(STORAGE_KEY, JSON.stringify(savedModel));
@@ -507,7 +510,17 @@ export function App() {
     if(modelRef.current.kind==="scroll")await saveToManuscriptBox();
   }
 
-  function loadFreshSheet() {
+  async function loadFreshSheet() {
+    const previous = modelRef.current;
+    const hadInk = previous.lines.some((line) => line.glyphs.length);
+    if (hadInk) {
+      try {
+        await saveToManuscriptBox();
+      } catch {
+        setStatus("上一张稿纸暂时无法保存，请先导出后再换纸");
+        return;
+      }
+    }
     const fresh = blankModel(modelRef.current.kind||"sheet");
     fresh.paperFormat = fresh.kind === "scroll" ? "sheet" : selectedPaper.format || "sheet";
     if(fresh.kind==="letter")fresh.ownerId=modelRef.current.ownerId;
@@ -523,7 +536,7 @@ export function App() {
     setEjected(false);
     setSavedManuscriptId("");
     setExportState("idle");
-    setStatus("新纸已装入");
+    setStatus(hadInk ? "上一张稿纸已收好，新纸已装入" : "新纸已装入");
     rememberTimer(window.setTimeout(focusWriter, 120));
   }
 
@@ -676,21 +689,24 @@ export function App() {
   }
 
   async function saveToManuscriptBox() {
-    if (!hasInk) return;
+    if (!modelRef.current.lines.some((line) => line.glyphs.length)) return;
     if (modelRef.current.kind === "letter") {
       await saveDocument(modelRef.current, { paperId: paperRef.current, all: true });
       setStatus("信笺已保存在当前账号的草稿中");
       return;
     }
 
-    const snapshot = cloneModel(modelRef.current);
+    const sourceModel = modelRef.current;
+    const snapshot = cloneModel(sourceModel);
     if(snapshot.kind==="scroll") {
       await savePendingRef.current;
       if(savedManuscriptId){setStatus("长卷已在文稿箱中");return;}
       const archive={...snapshot,id:crypto.randomUUID()};
       await saveDocument(archive,{paperId,archived:true,all:true});
       const entry={id:archive.id,documentId:archive.id,kind:"scroll",paperId,savedAt:new Date().toISOString(),lineCount:archive.lines.length,excerpt:manuscriptExcerpt(archive).slice(0,100)};
-      setManuscripts(current=>[entry,...current]);setSavedManuscriptId(archive.id);setStatus("长卷已收好，可在文稿箱展开或续写");return;
+      setManuscripts(current=>[entry,...current]);
+      if (modelRef.current === sourceModel) setSavedManuscriptId(archive.id);
+      setStatus("长卷已收好，可在文稿箱展开或续写");return;
     }
     const duplicate = manuscripts.find(
       (entry) =>
@@ -711,7 +727,9 @@ export function App() {
       model: snapshot,
       excerpt: manuscriptExcerpt(snapshot),
     };
-    setManuscripts((current) => [entry, ...current]);
+    const nextManuscripts = [entry, ...manuscripts];
+    localStorage.setItem(MANUSCRIPT_KEY, JSON.stringify(nextManuscripts.filter(item => !item.documentId)));
+    setManuscripts(nextManuscripts);
     setSavedManuscriptId(entry.id);
     setStatus("稿纸已存入文稿箱");
     play("space");
@@ -1115,7 +1133,7 @@ export function App() {
               </button>
             </header>
             <p className="paper-box-intro">
-              退纸后的稿件会连同纸张、字迹与换行一起保存。打开任意稿纸可重新查看和导出。
+              退纸后可存入文稿箱；装入新纸时也会自动收好旧稿。打开后可重新查看和导出。
             </p>
             {manuscripts.length ? (
               <div className="manuscript-list">
@@ -1139,7 +1157,7 @@ export function App() {
                       </span>
                       <span className="manuscript-card-meta">
                         <span className="manuscript-card-title">
-                          {entry.kind==="scroll"?"长卷":"稿纸"} · {manuscripts.length-index}
+                          {entry.kind==="scroll"?"长卷":entry.model?.paperFormat==="postcard"?"明信片":"稿纸"} · {manuscripts.length-index}
                         </span>
                         <span className="manuscript-card-paper">
                           {paper.name} · {entry.lineCount||entry.model.lines.length} 行
@@ -1249,7 +1267,6 @@ export function App() {
       )}
 
       <PostOffice open={postOpen} user={postUser} onSession={setPostUser} onClose={()=>{setPostOpen(false);setSealedDraft(null);}} onCompose={startLetter} sealedDraft={sealedDraft} onPosted={letterPosted}/>
-      <p className="mobile-note">横屏或桌面浏览器能看到完整机械动作。</p>
     </main>
   );
 }

@@ -1122,10 +1122,6 @@ button {
     inset 0 1px rgba(255, 238, 188, 0.16);
 }
 
-.mobile-note {
-  display: none;
-}
-
 @keyframes ink-land {
   0% {
     filter: blur(0.45px);
@@ -1354,20 +1350,6 @@ button {
 
   .paper-box-footer {
     margin-top: 10px;
-  }
-
-  .mobile-note {
-    position: fixed;
-    right: 20px;
-    bottom: max(20px, env(safe-area-inset-bottom));
-    left: 20px;
-    display: block;
-    margin: 0;
-    color: rgba(232, 212, 177, 0.72);
-    font-family: "Songti SC", "STSong", serif;
-    font-size: 12px;
-    letter-spacing: 0.1em;
-    text-align: center;
   }
 
   .final-sheet {
