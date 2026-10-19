@@ -22,6 +22,8 @@ export async function postApi(path, method = "GET", body) {
   const headers = new Headers();
   if (body !== undefined) headers.set("Content-Type", "application/json");
   const token = POST_API_ORIGIN ? session()?.token : null;
+  // Cross-site sessions exist only in this tab; without one nobody is signed in.
+  if (POST_API_ORIGIN && !token && path === "/me") return { user: null };
   if (token) headers.set("Authorization", `Bearer ${token}`);
   const response = await fetch(`${POST_API_ORIGIN}/api${path}`, {
     method,

@@ -1,8 +1,8 @@
 import { publicAsset } from "./runtimeConfig.js";
 
 export const STAMPS = [
-  { id: "road", name: "山路", region: "远方", caption: "写给远方", description: "山脊与蜿蜒的道路，把未说完的话带向远方。", asset: "assets/post-stamp-road.png" },
-  { id: "swallow", name: "归燕", region: "归途", caption: "见字如晤", description: "一只衔信归来的燕子，穿过旧纸上的暮色。", asset: "assets/post-stamp-swallow.png" },
+  { id: "road", name: "山路", region: "远方", caption: "写给远方", description: "山脊与蜿蜒的道路，把未说完的话带向远方。" },
+  { id: "swallow", name: "归燕", region: "归途", caption: "见字如晤", description: "一只衔信归来的燕子，穿过旧纸上的暮色。" },
   { id: "dunhuang", name: "敦煌飞天", region: "中国 · 敦煌", caption: "流沙与飞天", description: "飘带、莲花与矿物色，取意于敦煌壁画中绵延的风。" },
   { id: "kyoto", name: "京都白鹤", region: "日本 · 京都", caption: "松间远山", description: "白鹤掠过海浪，靛蓝木版线条里留着松枝与远山。" },
   { id: "nile", name: "尼罗河畔", region: "埃及 · 尼罗河", caption: "纸草与莲花", description: "朱鹭栖于莲花之间，纸草与柱式写下古河流域的记忆。" },
