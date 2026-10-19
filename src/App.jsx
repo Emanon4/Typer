@@ -9,7 +9,7 @@ import { exportPaperPng } from "./exportPaper";
 import { PaperDocument as FinishedSheet, paperStyle } from "./PaperDocument";
 import { blankDocument, normalizeDocument, rollLengthMetres } from "./writingModel";
 import { saveDocument, readDocument, deleteDocument } from "./documentStore";
-import { archiveManuscript, deleteManuscript, listManuscripts, manuscriptHash, migrateLegacyManuscripts } from "./manuscriptStore";
+import { archiveManuscript, deleteManuscript, latestWorkingScroll, listManuscripts, manuscriptHash, migrateLegacyManuscripts } from "./manuscriptStore";
 import { readStored, writeStored, removeStored } from "./safeStorage";
 import { MAX_PASTE_GRAPHEMES, acceptsKeyRepeat, limitPaste, splitGraphemes } from "./typingInput";
 import { PostOffice } from "./PostOffice";
@@ -205,6 +205,18 @@ export function App() {
     window.clearTimeout(noticeTimerRef.current);
     setNotice(message);
     noticeTimerRef.current = rememberTimer(window.setTimeout(() => setNotice(""), 5000));
+  }
+
+  // While a document is being swapped, new keys would land on the outgoing
+  // sheet and vanish with it, so input is refused until the swap finishes.
+  async function holdInput(task) {
+    if (transitionRef.current) return;
+    transitionRef.current = true;
+    try {
+      return await task();
+    } finally {
+      transitionRef.current = false;
+    }
   }
 
   // Drop every pending key; the strike already in progress completes.
@@ -419,15 +431,9 @@ export function App() {
       return;
     }
 
-    if (event.key === "Escape") {
-      if (queueRef.current.length) {
-        queueRef.current = [];
-        flash("已停下，余下的字不再打出");
-      }
-      return;
-    }
+    if (event.key === "Escape") return;
     if (event.repeat && !event.metaKey && !event.ctrlKey && !event.altKey &&
-      !acceptsKeyRepeat(event.key, queueRef.current.length)) {
+      !acceptsKeyRepeat(event.key, queueRef.current.length + (processingRef.current ? 1 : 0))) {
       event.preventDefault();
       return;
     }
@@ -500,14 +506,11 @@ export function App() {
   async function ejectPaper() {
     if (ejected || ejecting || transitionRef.current) return;
     if(compositionRef.current){setStatus("请等当前文字落纸后再收稿");return;}
-    transitionRef.current = true;
-    try {
+    await holdInput(async () => {
       inputRef.current?.blur();
       await stopTyping();
       await ejectNow();
-    } finally {
-      transitionRef.current = false;
-    }
+    });
   }
 
   async function ejectNow() {
@@ -600,17 +603,21 @@ export function App() {
 
   async function switchWritingMode(kind) {
     if(compositionRef.current){setStatus("请等当前文字落纸后再换纸");return;}
-    inputRef.current?.blur();
-    await stopTyping();
-    await savePendingRef.current;
-    try {
-      let next=kind==="scroll"?await readDocument(readStored(ACTIVE_SCROLL_KEY)):loadDraft();
-      if(!next)next=blankModel(kind);
-      if(kind==="scroll")writeStored(ACTIVE_SCROLL_KEY,next.id);
-      writeStored(WRITING_MODE_KEY,kind);
-      installDocument(normalizeDocument(next,kind),next.paperId|| (kind==="scroll"?"reference-ivory":readStored(SHEET_PAPER_KEY)||paperId));
-      setStatus(kind==="scroll"?"长卷已装好，写到哪里都没有页末":"原来的稿纸已装回");
-    }catch{setStatus("暂时无法读取本机稿件，请重试");}
+    await holdInput(async () => {
+      inputRef.current?.blur();
+      await stopTyping();
+      await savePendingRef.current;
+      try {
+        // The pointer lives in localStorage, which may be full; the roll itself
+        // is in IndexedDB, so a missing pointer falls back to the latest copy.
+        let next=kind==="scroll"?(await readDocument(readStored(ACTIVE_SCROLL_KEY))||await latestWorkingScroll()):loadDraft();
+        if(!next)next=blankModel(kind);
+        if(kind==="scroll")writeStored(ACTIVE_SCROLL_KEY,next.id);
+        writeStored(WRITING_MODE_KEY,kind);
+        installDocument(normalizeDocument(next,kind),next.paperId|| (kind==="scroll"?"reference-ivory":readStored(SHEET_PAPER_KEY)||paperId));
+        setStatus(kind==="scroll"?"长卷已装好，写到哪里都没有页末":"原来的稿纸已装回");
+      }catch{setStatus("暂时无法读取本机稿件，请重试");}
+    });
   }
 
   // The active roll is only a working copy. Archive anything not yet archived
@@ -618,9 +625,9 @@ export function App() {
   async function retireActiveScroll() {
     await savePendingRef.current;
     const current=modelRef.current;
-    const id=current.kind==="scroll"?current.id:readStored(ACTIVE_SCROLL_KEY);
-    const roll=current.kind==="scroll"?current:id&&await readDocument(id);
+    const roll=current.kind==="scroll"?current:await readDocument(readStored(ACTIVE_SCROLL_KEY))||await latestWorkingScroll();
     if(!roll)return;
+    const id=roll.id;
     const archived=current.kind==="scroll"&&savedManuscriptIdRef.current;
     if(!archived&&roll.lines.some(line=>line.glyphs.length)) {
       const entry=await archiveManuscript(cloneModel(roll),{paperId:current.kind==="scroll"?paperRef.current:roll.paperId,id:roll.archiveId});
@@ -631,28 +638,32 @@ export function App() {
 
   async function resumeScroll(entry) {
     if(compositionRef.current)return;
-    await stopTyping();
-    try { await retireActiveScroll(); }
-    catch { setStatus("当前长卷暂时无法收好，请先导出后再续写"); return; }
-    const { contentHash, excerpt, lineCount, updatedAt, ...archived }=cloneModel(entry.model);
-    // Continuing a roll later updates this same archive instead of copying it.
-    const next={...archived,id:crypto.randomUUID(),archived:false,archiveId:entry.id};
-    await saveDocument(next,{paperId:entry.paperId,all:true});
-    writeStored(ACTIVE_SCROLL_KEY,next.id);writeStored(WRITING_MODE_KEY,"scroll");
-    installDocument(next,entry.paperId);setStatus("长卷已装回，从上次落笔处继续");
+    await holdInput(async () => {
+      await stopTyping();
+      try { await retireActiveScroll(); }
+      catch { setStatus("当前长卷暂时无法收好，请先导出后再续写"); return; }
+      const { contentHash, excerpt, lineCount, updatedAt, ...archived }=cloneModel(entry.model);
+      // Continuing a roll later updates this same archive instead of copying it.
+      const next={...archived,id:crypto.randomUUID(),archived:false,archiveId:entry.id};
+      await saveDocument(next,{paperId:entry.paperId,all:true});
+      writeStored(ACTIVE_SCROLL_KEY,next.id);writeStored(WRITING_MODE_KEY,"scroll");
+      installDocument(next,entry.paperId);setStatus("长卷已装回，从上次落笔处继续");
+    });
   }
 
   async function startLetter({documentId,recipient="",ownerId}) {
     if(!postUser||ownerId!==postUser.id)return;
     if(compositionRef.current)throw new Error("请等当前文字落纸后再取信笺");
-    await stopTyping();
-    await savePendingRef.current;
-    const existing=documentId?await readDocument(documentId):null;
-    if(existing&&existing.ownerId!==ownerId)return;
-    const next=existing||blankDocument("letter",{ownerId,recipient});
-    if(existing?.mailedAt)return;
-    installDocument(next,existing?.paperId||DEFAULT_LETTER_PAPER_ID);
-    setPostOpen(false);setSealedDraft(null);setStatus(recipient?`正在给 ${recipient} 写信`:"信笺已装好，写完后再封缄");
+    await holdInput(async () => {
+      await stopTyping();
+      await savePendingRef.current;
+      const existing=documentId?await readDocument(documentId):null;
+      if(existing&&existing.ownerId!==ownerId)return;
+      const next=existing||blankDocument("letter",{ownerId,recipient});
+      if(existing?.mailedAt)return;
+      installDocument(next,existing?.paperId||DEFAULT_LETTER_PAPER_ID);
+      setPostOpen(false);setSealedDraft(null);setStatus(recipient?`正在给 ${recipient} 写信`:"信笺已装好，写完后再封缄");
+    });
   }
 
   async function letterPosted(letter) {
@@ -686,9 +697,10 @@ export function App() {
   }
 
   async function choosePaper(nextPaper) {
-    if (paperChanging) return;
+    if (paperChanging || transitionRef.current) return;
     if (compositionRef.current) { setStatus("请等当前文字落纸后再换纸"); return; }
     setPaperChanging(true);
+    transitionRef.current = true;
     try {
       await stopTyping();
       await savePendingRef.current;
@@ -712,7 +724,7 @@ export function App() {
       setStatus(`已装入「${nextPaper.name}」${changedGeometry && hasInk ? "，原稿已收好" : ""}`);
       play("space");
     } catch { setStatus("原稿暂时无法收好，请先导出后再换纸"); }
-    finally { setPaperChanging(false); }
+    finally { transitionRef.current = false; setPaperChanging(false); }
   }
 
   function openManuscriptBox() {
@@ -918,8 +930,13 @@ export function App() {
     [],
   );
 
-  // Esc closes the top-most drawer; the post office and album handle their own.
+  // Esc stops pending keys wherever focus is, and closes the top-most drawer;
+  // the post office and album close themselves.
   escapeRef.current = () => {
+    if (queueRef.current.length) {
+      queueRef.current = [];
+      flash("已停下，余下的字不再打出");
+    }
     if (postOpen || albumOpen) return;
     if (viewingManuscript) returnToManuscriptBox();
     else if (manuscriptBoxOpen) closeManuscriptBox();

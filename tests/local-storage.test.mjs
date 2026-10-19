@@ -4,7 +4,7 @@ import assert from "node:assert/strict";
 import { readStored, writeStored, removeStored } from "../src/safeStorage.js";
 import { MAX_PASTE_GRAPHEMES, acceptsKeyRepeat, limitPaste } from "../src/typingInput.js";
 import { saveDocument, readDocument, deleteDocument, listDocuments, documentExcerpt } from "../src/documentStore.js";
-import { archiveManuscript, listManuscripts, manuscriptHash, migrateLegacyManuscripts, LEGACY_MANUSCRIPT_KEY } from "../src/manuscriptStore.js";
+import { archiveManuscript, latestWorkingScroll, listManuscripts, manuscriptHash, migrateLegacyManuscripts, LEGACY_MANUSCRIPT_KEY } from "../src/manuscriptStore.js";
 import { blankDocument } from "../src/writingModel.js";
 
 function memoryStorage(entries = {}) {
@@ -115,4 +115,15 @@ test("the manuscript box lists archives only, and one roll keeps one entry", asy
   assert.ok(!entries.some((item) => item.id === letter.id), "letters stay in private drafts");
   assert.ok(!entries.some((item) => item.id === active.id), "working copies are not archives");
   assert.ok((await listDocuments()).some((doc) => doc.id === letter.id));
+});
+
+test("a roll whose pointer could not be stored is still found in IndexedDB", async () => {
+  const older = blankDocument("scroll", { lines: page("旧卷").lines });
+  const newer = blankDocument("scroll", { lines: page("新卷").lines });
+  await saveDocument(older, { paperId: "reference-ivory", all: true, updatedAt: "2030-01-01T00:00:00.000Z" });
+  await saveDocument(newer, { paperId: "reference-ivory", all: true, updatedAt: "2030-01-02T00:00:00.000Z" });
+  await archiveManuscript(page("存档"), { paperId: "reference-ivory", savedAt: "2030-01-03T00:00:00.000Z" });
+  const found = await latestWorkingScroll();
+  assert.equal(found.id, newer.id, "newest working copy, never an archive");
+  assert.deepEqual(found.lines, newer.lines);
 });
