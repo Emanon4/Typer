@@ -1,4 +1,4 @@
-import { saveDocument, listDocuments, deleteDocument, documentExcerpt } from "./documentStore.js";
+import { saveDocument, readDocument, listDocuments, deleteDocument, documentExcerpt } from "./documentStore.js";
 import { readStored, removeStored } from "./safeStorage.js";
 
 // Sheets used to live in localStorage, whose small quota could stop the
@@ -51,6 +51,14 @@ export async function archiveManuscript(
 }
 
 export const deleteManuscript = deleteDocument;
+
+// The newest unarchived roll: the working copy the active pointer names.
+export async function latestWorkingScroll() {
+  const [latest] = (await listDocuments())
+    .filter((doc) => doc.kind === "scroll" && !doc.archived)
+    .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+  return latest ? readDocument(latest.id) : null;
+}
 
 export async function migrateLegacyManuscripts(storage) {
   let entries;
