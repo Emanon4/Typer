@@ -224,11 +224,14 @@ export function createPostService({
       deliverAt: row.deliver_at,
       delivered: row.deliver_at <= clock(),
       opened: user.id === row.recipient ? Boolean(row.opened_at) : undefined,
-      stampId: JSON.parse(row.snapshot).stampId,
+      stampId: row.stamp_id,
     };
   }
-  const joined =
-    "SELECT l.*,s.handle AS from_handle,s.name AS from_name,r.handle AS to_handle,r.name AS to_name FROM letters l JOIN users s ON s.id=l.sender JOIN users r ON r.id=l.recipient";
+  const parties =
+    "s.handle AS from_handle,s.name AS from_name,r.handle AS to_handle,r.name AS to_name FROM letters l JOIN users s ON s.id=l.sender JOIN users r ON r.id=l.recipient";
+  // Listings never read the ink snapshot, which can be ~250 KB per letter.
+  const listed = `SELECT l.id,l.sender,l.recipient,l.title,l.created_at,l.deliver_at,l.opened_at,l.fingerprint,json_extract(l.snapshot,'$.stampId') AS stamp_id,${parties}`;
+  const joined = `SELECT l.*,json_extract(l.snapshot,'$.stampId') AS stamp_id,${parties}`;
 
   async function handle(request, { clientAddress = "local" } = {}) {
     try {
@@ -269,7 +272,7 @@ export function createPostService({
           password.length < 10 ||
           password.length > 128
         )
-          throw fail("邮址需为 3–24 位英文、数字或下划线；口令至少 10 位");
+          throw fail("邮址需为 3–24 位，以英文字母开头，可含数字、下划线或连字符；口令至少 10 位");
         await throttle(`auth-handle:${handle}`);
         const found = await one("SELECT * FROM users WHERE handle=?", handle);
         if (path === "/api/login") {
@@ -434,7 +437,7 @@ export function createPostService({
           id, title, JSON.stringify(snapshot), now, now, hours, day,
           data.nonce, fingerprint, user.id, address, day,
         );
-        const letter = await one(`${joined} WHERE l.sender=? AND l.nonce=?`, user.id, data.nonce);
+        const letter = await one(`${listed} WHERE l.sender=? AND l.nonce=?`, user.id, data.nonce);
         if (letter) {
           if (letter.fingerprint !== fingerprint)
             throw fail("这封信已经投邮，内容不能再更换", 409);
@@ -452,11 +455,11 @@ export function createPostService({
         const sent = url.searchParams.get("box") === "sent";
         const rows = sent
           ? await all(
-              `${joined} WHERE l.sender=? ORDER BY l.created_at DESC LIMIT 300`,
+              `${listed} WHERE l.sender=? ORDER BY l.created_at DESC LIMIT 300`,
               user.id,
             )
           : await all(
-              `${joined} WHERE l.recipient=? AND l.deliver_at<=? ORDER BY l.deliver_at DESC LIMIT 300`,
+              `${listed} WHERE l.recipient=? AND l.deliver_at<=? ORDER BY l.deliver_at DESC LIMIT 300`,
               user.id,
               clock(),
             );

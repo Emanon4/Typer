@@ -1122,6 +1122,12 @@ button {
     inset 0 1px rgba(255, 238, 188, 0.16);
 }
 
+.fresh-sheet-button.secondary.danger {
+  color: #f6d9c8;
+  background: rgba(104, 32, 22, 0.94);
+  border-color: rgba(214, 120, 92, 0.78);
+}
+
 @keyframes ink-land {
   0% {
     filter: blur(0.45px);

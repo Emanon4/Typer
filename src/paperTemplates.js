@@ -1,4 +1,5 @@
 import { publicAsset } from "./runtimeConfig.js";
+import { readStored } from "./safeStorage.js";
 
 export const PAPER_SELECTION_KEY = "typer-paper-v1";
 const LEGACY_PAPER_SELECTION_KEY = "lead-typewriter-paper-v1";
@@ -111,11 +112,7 @@ export function getPaperTemplate(id) {
 }
 
 export function loadPaperTemplateId() {
-  let stored = localStorage.getItem(PAPER_SELECTION_KEY);
-  if (!stored) {
-    stored = localStorage.getItem(LEGACY_PAPER_SELECTION_KEY);
-    if (stored) localStorage.setItem(PAPER_SELECTION_KEY, stored);
-  }
+  const stored = readStored(PAPER_SELECTION_KEY, LEGACY_PAPER_SELECTION_KEY);
   return AVAILABLE_PAPER_TEMPLATES.some((template) => template.id === stored)
     ? stored
     : PAPER_TEMPLATES[0].id;

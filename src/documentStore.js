@@ -33,9 +33,21 @@ function value(request) {
   });
 }
 
+// Bounded: a 10,000-line roll is saved on every keystroke.
+export function documentExcerpt(lines) {
+  let text = "";
+  for (const row of lines) {
+    for (const glyph of row.glyphs) text += glyph.character;
+    if (text.length >= 400) break;
+  }
+  return text.replace(/\s+/gu, " ").trim().slice(0, 100);
+}
+
+const allLines = (id) => IDBKeyRange.bound([id, -Infinity], [id, Infinity]);
+
 export async function saveDocument(
   model,
-  { paperId, archived = false, all = false, ...extra } = {},
+  { paperId, archived = false, all = false, updatedAt, ...extra } = {},
 ) {
   const db = await database(),
     tx = db.transaction(["documents", "lines"], "readwrite");
@@ -46,13 +58,14 @@ export async function saveDocument(
     paperId,
     archived,
     lineCount: lines.length,
-    updatedAt: new Date().toISOString(),
-    excerpt: lines
-      .slice(0, 6)
-      .flatMap((row) => row.glyphs.map((g) => g.character))
-      .join("")
-      .slice(0, 100),
+    updatedAt: updatedAt || new Date().toISOString(),
+    excerpt: documentExcerpt(lines),
   });
+  // A full rewrite replaces an older, possibly longer copy under the same id.
+  if (all)
+    tx.objectStore("lines").delete(
+      IDBKeyRange.bound([model.id, lines.length], [model.id, Infinity]),
+    );
   const indices = all ? lines.map((_, i) => i) : [model.activeLine];
   for (const index of indices)
     tx.objectStore("lines").put({
@@ -84,4 +97,11 @@ export async function listDocuments() {
   return value(
     db.transaction("documents", "readonly").objectStore("documents").getAll(),
   );
+}
+export async function deleteDocument(id) {
+  const db = await database(),
+    tx = db.transaction(["documents", "lines"], "readwrite");
+  tx.objectStore("documents").delete(id);
+  tx.objectStore("lines").delete(allLines(id));
+  await done(tx);
 }

@@ -99,9 +99,10 @@ async function renderSlice(model,paper,texture,slice) {
   const glyphWidth = copyWidth * layout.glyphWidth / 100;
   const glyphHeight = copyWidth * layout.glyphHeight / 100;
 
+  // One reusable stamp: resizing it resets its context for every glyph.
+  const stamp = document.createElement("canvas");
   for (const [lineIndex, line] of model.lines.slice(slice.first,slice.last).entries()) {
     for (const glyph of line.glyphs) {
-      const stamp = document.createElement("canvas");
       paintInkGlyph(stamp, glyph, {
         cssWidth: glyphWidth,
         cssHeight: glyphHeight,
@@ -113,6 +114,7 @@ async function renderSlice(model,paper,texture,slice) {
     }
   }
 
+  stamp.width=stamp.height=1;
   const blob=await canvasToBlob(canvas);
   canvas.width=canvas.height=1;
   return blob;
