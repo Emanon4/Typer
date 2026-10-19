@@ -4,11 +4,14 @@ import { createAudioEngine } from "./audioEngine";
 import { createImeInputAdapter } from "./imeInput";
 import { runStrikeCycle } from "./strikeCycle";
 import { pointerKeyAction } from "./pointerKeyboard";
-import { CHINESE_INK_FONT } from "./inkTypography";
+import { ensureInkFont } from "./inkTypography";
 import { exportPaperPng } from "./exportPaper";
 import { PaperDocument as FinishedSheet, paperStyle } from "./PaperDocument";
 import { blankDocument, normalizeDocument, rollLengthMetres } from "./writingModel";
-import { saveDocument, readDocument, listDocuments } from "./documentStore";
+import { saveDocument, readDocument, deleteDocument } from "./documentStore";
+import { archiveManuscript, deleteManuscript, listManuscripts, manuscriptHash, migrateLegacyManuscripts } from "./manuscriptStore";
+import { readStored, writeStored, removeStored } from "./safeStorage";
+import { MAX_PASTE_GRAPHEMES, acceptsKeyRepeat, limitPaste, splitGraphemes } from "./typingInput";
 import { PostOffice } from "./PostOffice";
 import { StampAlbum } from "./StampAlbum";
 import { publicAsset } from "./runtimeConfig";
@@ -44,10 +47,12 @@ import {
 
 const STORAGE_KEY = "typer-draft-v1";
 const SOUND_KEY = "typer-sound-v1";
-const MANUSCRIPT_KEY = "typer-manuscripts-v1";
+const ACTIVE_SCROLL_KEY = "typer-active-scroll-v1";
+const WRITING_MODE_KEY = "typer-writing-mode-v1";
+const SHEET_PAPER_KEY = "typer-sheet-paper-v1";
 const LEGACY_STORAGE_KEY = "lead-typewriter-draft-v1";
 const LEGACY_SOUND_KEY = "lead-typewriter-sound-v1";
-const LEGACY_MANUSCRIPT_KEY = "lead-typewriter-manuscripts-v1";
+const STORAGE_FULL = "本机存储已满，新落的字未能保存；请导出稿件或删除文稿箱中的旧稿";
 
 const KEY_POSITIONS = REFERENCE_KEYS.filter(key => key.label.length === 1);
 
@@ -55,42 +60,6 @@ function blankModel(kind="sheet") { return blankDocument(kind); }
 
 function cloneModel(model) {
   return JSON.parse(JSON.stringify(model));
-}
-
-function readMigratedValue(key, legacyKey) {
-  const current = localStorage.getItem(key);
-  if (current !== null) return current;
-  const legacy = localStorage.getItem(legacyKey);
-  if (legacy !== null) localStorage.setItem(key, legacy);
-  return legacy;
-}
-
-function loadManuscripts() {
-  try {
-    const parsed = JSON.parse(
-      readMigratedValue(MANUSCRIPT_KEY, LEGACY_MANUSCRIPT_KEY),
-    );
-    if (!Array.isArray(parsed)) return [];
-    return parsed.filter(
-      (entry) =>
-        entry &&
-        entry.id &&
-        entry.savedAt &&
-        Array.isArray(entry.model?.lines),
-    );
-  } catch {
-    return [];
-  }
-}
-
-
-function manuscriptExcerpt(model) {
-  const text = model.lines
-    .flatMap((line) => line.glyphs.map((glyph) => glyph.character))
-    .join("")
-    .replace(/\s+/gu, " ")
-    .trim();
-  return text || "空白稿纸";
 }
 
 function formatSavedAt(value) {
@@ -106,7 +75,7 @@ function formatSavedAt(value) {
 
 function loadDraft() {
   try {
-    const parsed = JSON.parse(readMigratedValue(STORAGE_KEY, LEGACY_STORAGE_KEY));
+    const parsed = JSON.parse(readStored(STORAGE_KEY, LEGACY_STORAGE_KEY));
     if (!parsed || !Array.isArray(parsed.lines) || !parsed.lines.length) {
       return { ...blankModel(), paperId: loadPaperTemplateId() };
     }
@@ -114,17 +83,6 @@ function loadDraft() {
   } catch {
     return { ...blankModel(), paperId: loadPaperTemplateId() };
   }
-}
-
-function splitGraphemes(text) {
-  if (typeof Intl !== "undefined" && Intl.Segmenter) {
-    return [
-      ...new Intl.Segmenter("zh-Hans", { granularity: "grapheme" }).segment(
-        text,
-      ),
-    ].map((entry) => entry.segment);
-  }
-  return Array.from(text);
 }
 
 function glyphUnits(character) {
@@ -150,7 +108,7 @@ function codeHash(value) {
 export function App() {
   const [model, setModel] = useState(loadDraft);
   const [soundOn, setSoundOn] = useState(
-    () => readMigratedValue(SOUND_KEY, LEGACY_SOUND_KEY) !== "off",
+    () => readStored(SOUND_KEY, LEGACY_SOUND_KEY) !== "off",
   );
   const [activeKey, setActiveKey] = useState("");
   const [machineHit, setMachineHit] = useState(false);
@@ -168,8 +126,9 @@ export function App() {
   const [paperChanging, setPaperChanging] = useState(false);
   const [shiftLatched, setShiftLatched] = useState(false);
   const [manuscriptBoxOpen, setManuscriptBoxOpen] = useState(false);
-  const [manuscripts, setManuscripts] = useState(loadManuscripts);
+  const [manuscripts, setManuscripts] = useState([]);
   const [viewingManuscript, setViewingManuscript] = useState(null);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [savedManuscriptId, setSavedManuscriptId] = useState("");
   const [paperId, setPaperId] = useState(loadPaperTemplateId);
   const [variantId, setVariantId] = useState(loadMachineVariantId);
@@ -180,6 +139,9 @@ export function App() {
   const [sealedDraft,setSealedDraft] = useState(null);
   const [fullscreen, setFullscreen] = useState(Boolean(document.fullscreenElement));
   const [status, setStatus] = useState("点击纸张，开始写作");
+  // Shown above routine status until resolved: printing must not hide it.
+  const [storageIssue, setStorageIssue] = useState("");
+  const [notice, setNotice] = useState("");
 
   const modelRef = useRef(model);
   const soundRef = useRef(soundOn);
@@ -193,6 +155,11 @@ export function App() {
   const glyphIdRef = useRef(Date.now());
   const timersRef = useRef(new Set());
   const savePendingRef = useRef(Promise.resolve());
+  const idleWaitersRef = useRef([]);
+  const transitionRef = useRef(false);
+  const noticeTimerRef = useRef(0);
+  const manuscriptsRef = useRef(manuscripts);
+  manuscriptsRef.current = manuscripts;
   const paperRef = useRef(paperId);
   paperRef.current=paperId;
 
@@ -223,10 +190,24 @@ export function App() {
     // A stored manuscript is a snapshot. Any subsequent carriage or ink
     // change makes the sheet/roll eligible to be stored again.
     setSavedManuscriptId("");
+    // Ink stays on the sheet even when the browser refuses to store it.
     if(savedModel.kind === "scroll" || savedModel.kind === "letter") {
-      savePendingRef.current=saveDocument(savedModel,{paperId:paperRef.current}).catch(()=>{setStatus("本机存储空间不足，请先导出稿件；当前内容仍在纸上");});
-    } else localStorage.setItem(STORAGE_KEY, JSON.stringify(savedModel));
+      savePendingRef.current=saveDocument(savedModel,{paperId:paperRef.current}).then(()=>setStorageIssue(""),()=>setStorageIssue(STORAGE_FULL));
+    } else setStorageIssue(writeStored(STORAGE_KEY, JSON.stringify(savedModel)) ? "" : STORAGE_FULL);
     setModel(nextModel);
+  }
+
+  function flash(message) {
+    window.clearTimeout(noticeTimerRef.current);
+    setNotice(message);
+    noticeTimerRef.current = rememberTimer(window.setTimeout(() => setNotice(""), 5000));
+  }
+
+  // Drop every pending key; the strike already in progress completes.
+  function stopTyping() {
+    queueRef.current = [];
+    if (!processingRef.current) return Promise.resolve();
+    return new Promise((resolve) => idleWaitersRef.current.push(resolve));
   }
 
   function delay(milliseconds) {
@@ -383,15 +364,24 @@ export function App() {
       }
     } finally {
       if (cycle === cycleRef.current) processingRef.current = false;
+      if (!processingRef.current) idleWaitersRef.current.splice(0).forEach((resolve) => resolve());
     }
   }
 
   function enqueue(items) {
+    if (transitionRef.current) return;
     queueRef.current.push(...items);
     processQueue();
   }
 
+  function enqueueInserted(text) {
+    const { text: kept, dropped } = limitPaste(text);
+    enqueueText(kept, "IME");
+    if (dropped) flash(`一次打入的文字较长，只打出前 ${MAX_PASTE_GRAPHEMES} 字`);
+  }
+
   function enqueueText(text, code = "") {
+    ensureInkFont(text);
     const items = splitGraphemes(text).flatMap((character) => {
       if (character === "\r") return [];
       if (character === "\n") return [{ type: "return" }];
@@ -425,6 +415,18 @@ export function App() {
       return;
     }
 
+    if (event.key === "Escape") {
+      if (queueRef.current.length) {
+        queueRef.current = [];
+        flash("已停下，余下的字不再打出");
+      }
+      return;
+    }
+    if (event.repeat && !event.metaKey && !event.ctrlKey && !event.altKey &&
+      !acceptsKeyRepeat(event.key, queueRef.current.length)) {
+      event.preventDefault();
+      return;
+    }
     if (event.key === "Enter") {
       event.preventDefault();
       enqueue([{ type: "return" }]);
@@ -454,11 +456,12 @@ export function App() {
       inputType: event.nativeEvent.inputType,
       isComposing: event.nativeEvent.isComposing,
     });
-    if (result.text) enqueueText(result.text, "IME");
+    if (result.text) enqueueInserted(result.text);
     if (result.clear) event.currentTarget.value = "";
   }
 
   function handleCompositionStart(event) {
+    ensureInkFont("字");
     imeInputRef.current.start({ value: event.currentTarget.value });
     compositionRef.current = true;
     setCompositionText("");
@@ -475,13 +478,13 @@ export function App() {
     });
     compositionRef.current = false;
     setCompositionText("");
-    if (result.text) enqueueText(result.text, "IME");
+    if (result.text) enqueueInserted(result.text);
     if (result.clear) event.currentTarget.value = "";
   }
 
   function handlePaste(event) {
     event.preventDefault();
-    enqueueText(event.clipboardData.getData("text"), "IME");
+    enqueueInserted(event.clipboardData.getData("text"));
   }
 
   function focusWriter(event) {
@@ -491,9 +494,19 @@ export function App() {
   }
 
   async function ejectPaper() {
-    if (ejected || ejecting) return;
-    if(processingRef.current||compositionRef.current){setStatus("请等当前文字落纸后再收稿");return;}
-    inputRef.current?.blur();
+    if (ejected || ejecting || transitionRef.current) return;
+    if(compositionRef.current){setStatus("请等当前文字落纸后再收稿");return;}
+    transitionRef.current = true;
+    try {
+      inputRef.current?.blur();
+      await stopTyping();
+      await ejectNow();
+    } finally {
+      transitionRef.current = false;
+    }
+  }
+
+  async function ejectNow() {
     cycleRef.current += 1;
     queueRef.current = [];
     processingRef.current = false;
@@ -507,15 +520,17 @@ export function App() {
     await delay(760);
     setEjected(true);
     setEjecting(false);
-    if(modelRef.current.kind==="scroll")await saveToManuscriptBox();
+    if(modelRef.current.kind==="scroll")await storeManuscript();
   }
 
   async function loadFreshSheet() {
     const previous = modelRef.current;
     const hadInk = previous.lines.some((line) => line.glyphs.length);
-    if (hadInk) {
+    if (hadInk || previous.kind === "scroll") {
       try {
-        await saveToManuscriptBox();
+        // A finished roll lives on as its archive; its working copy goes.
+        if (previous.kind === "scroll") await retireActiveScroll();
+        else await saveToManuscriptBox();
       } catch {
         setStatus("上一张稿纸暂时无法保存，请先导出后再换纸");
         return;
@@ -524,7 +539,7 @@ export function App() {
     const fresh = blankModel(modelRef.current.kind||"sheet");
     fresh.paperFormat = fresh.kind === "scroll" ? "sheet" : selectedPaper.format || "sheet";
     if(fresh.kind==="letter")fresh.ownerId=modelRef.current.ownerId;
-    if(fresh.kind==="scroll")localStorage.setItem("typer-active-scroll-v1",fresh.id);
+    if(fresh.kind==="scroll")writeStored(ACTIVE_SCROLL_KEY,fresh.id);
     cycleRef.current += 1;
     imeInputRef.current.reset();
     compositionRef.current = false;
@@ -580,31 +595,53 @@ export function App() {
   }
 
   async function switchWritingMode(kind) {
-    if(processingRef.current||compositionRef.current){setStatus("请等当前文字落纸后再换纸");return;}
+    if(compositionRef.current){setStatus("请等当前文字落纸后再换纸");return;}
     inputRef.current?.blur();
+    await stopTyping();
     await savePendingRef.current;
     try {
-      let next=kind==="scroll"?await readDocument(localStorage.getItem("typer-active-scroll-v1")):loadDraft();
+      let next=kind==="scroll"?await readDocument(readStored(ACTIVE_SCROLL_KEY)):loadDraft();
       if(!next)next=blankModel(kind);
-      if(kind==="scroll")localStorage.setItem("typer-active-scroll-v1",next.id);
-      localStorage.setItem("typer-writing-mode-v1",kind);
-      installDocument(normalizeDocument(next,kind),next.paperId|| (kind==="scroll"?"reference-ivory":localStorage.getItem("typer-sheet-paper-v1")||paperId));
+      if(kind==="scroll")writeStored(ACTIVE_SCROLL_KEY,next.id);
+      writeStored(WRITING_MODE_KEY,kind);
+      installDocument(normalizeDocument(next,kind),next.paperId|| (kind==="scroll"?"reference-ivory":readStored(SHEET_PAPER_KEY)||paperId));
       setStatus(kind==="scroll"?"长卷已装好，写到哪里都没有页末":"原来的稿纸已装回");
     }catch{setStatus("暂时无法读取本机稿件，请重试");}
   }
 
-  async function resumeScroll(entry) {
+  // The active roll is only a working copy. Archive anything not yet archived
+  // (even from sheet mode, where it is out of sight), then free its storage.
+  async function retireActiveScroll() {
     await savePendingRef.current;
-    if(modelRef.current.kind==="scroll"&&hasInk&&!savedManuscriptId)await saveToManuscriptBox();
-    const next={...cloneModel(entry.model),id:crypto.randomUUID(),archived:false};
+    const current=modelRef.current;
+    const id=current.kind==="scroll"?current.id:readStored(ACTIVE_SCROLL_KEY);
+    const roll=current.kind==="scroll"?current:id&&await readDocument(id);
+    if(!roll)return;
+    const archived=current.kind==="scroll"&&savedManuscriptId;
+    if(!archived&&roll.lines.some(line=>line.glyphs.length)) {
+      const entry=await archiveManuscript(cloneModel(roll),{paperId:current.kind==="scroll"?paperRef.current:roll.paperId,id:roll.archiveId});
+      setManuscripts(list=>[entry,...list.filter(item=>item.id!==entry.id)]);
+    }
+    await deleteDocument(id);
+  }
+
+  async function resumeScroll(entry) {
+    if(compositionRef.current)return;
+    await stopTyping();
+    try { await retireActiveScroll(); }
+    catch { setStatus("当前长卷暂时无法收好，请先导出后再续写"); return; }
+    const { contentHash, excerpt, lineCount, updatedAt, ...archived }=cloneModel(entry.model);
+    // Continuing a roll later updates this same archive instead of copying it.
+    const next={...archived,id:crypto.randomUUID(),archived:false,archiveId:entry.id};
     await saveDocument(next,{paperId:entry.paperId,all:true});
-    localStorage.setItem("typer-active-scroll-v1",next.id);localStorage.setItem("typer-writing-mode-v1","scroll");
+    writeStored(ACTIVE_SCROLL_KEY,next.id);writeStored(WRITING_MODE_KEY,"scroll");
     installDocument(next,entry.paperId);setStatus("长卷已装回，从上次落笔处继续");
   }
 
   async function startLetter({documentId,recipient="",ownerId}) {
     if(!postUser||ownerId!==postUser.id)return;
-    if(processingRef.current||compositionRef.current)throw new Error("请等当前文字落纸后再取信笺");
+    if(compositionRef.current)throw new Error("请等当前文字落纸后再取信笺");
+    await stopTyping();
     await savePendingRef.current;
     const existing=documentId?await readDocument(documentId):null;
     if(existing&&existing.ownerId!==ownerId)return;
@@ -617,7 +654,7 @@ export function App() {
   async function letterPosted(letter) {
     if(sealedDraft)await saveDocument({...sealedDraft,mailedAt:new Date().toISOString(),letterId:letter.id},{paperId:sealedDraft.paperId,all:true});
     setSealedDraft(null);
-    await switchWritingMode(localStorage.getItem("typer-writing-mode-v1")==="scroll"?"scroll":"sheet");
+    await switchWritingMode(readStored(WRITING_MODE_KEY)==="scroll"?"scroll":"sheet");
     setStatus("信已投邮");
   }
 
@@ -646,9 +683,10 @@ export function App() {
 
   async function choosePaper(nextPaper) {
     if (paperChanging) return;
-    if (processingRef.current || compositionRef.current) { setStatus("请等当前文字落纸后再换纸"); return; }
+    if (compositionRef.current) { setStatus("请等当前文字落纸后再换纸"); return; }
     setPaperChanging(true);
     try {
+      await stopTyping();
       await savePendingRef.current;
       const current = modelRef.current;
       const nextFormat = nextPaper.format || "sheet";
@@ -664,7 +702,7 @@ export function App() {
         }
         const kind = current.kind === "letter" ? "letter" : "sheet";
         next = blankDocument(kind, { paperFormat: nextFormat, ...(kind === "letter" ? { ownerId: current.ownerId, recipient: current.recipient } : {}) });
-        if (kind === "sheet") localStorage.setItem("typer-writing-mode-v1", "sheet");
+        if (kind === "sheet") writeStored(WRITING_MODE_KEY, "sheet");
       }
       installDocument(next, nextPaper.id);
       setStatus(`已装入「${nextPaper.name}」${changedGeometry && hasInk ? "，原稿已收好" : ""}`);
@@ -689,29 +727,29 @@ export function App() {
   }
 
   async function saveToManuscriptBox() {
-    if (!modelRef.current.lines.some((line) => line.glyphs.length)) return;
-    if (modelRef.current.kind === "letter") {
-      await saveDocument(modelRef.current, { paperId: paperRef.current, all: true });
+    const sourceModel = modelRef.current;
+    if (!sourceModel.lines.some((line) => line.glyphs.length)) return;
+    if (sourceModel.kind === "letter") {
+      await saveDocument(sourceModel, { paperId: paperRef.current, all: true });
       setStatus("信笺已保存在当前账号的草稿中");
       return;
     }
 
-    const sourceModel = modelRef.current;
-    const snapshot = cloneModel(sourceModel);
-    if(snapshot.kind==="scroll") {
+    const sourcePaper = paperRef.current;
+    if(sourceModel.kind==="scroll") {
       await savePendingRef.current;
       if(savedManuscriptId){setStatus("长卷已在文稿箱中");return;}
-      const archive={...snapshot,id:crypto.randomUUID()};
-      await saveDocument(archive,{paperId,archived:true,all:true});
-      const entry={id:archive.id,documentId:archive.id,kind:"scroll",paperId,savedAt:new Date().toISOString(),lineCount:archive.lines.length,excerpt:manuscriptExcerpt(archive).slice(0,100)};
-      setManuscripts(current=>[entry,...current]);
-      if (modelRef.current === sourceModel) setSavedManuscriptId(archive.id);
+      // One roll keeps one archive entry, refreshed each time it is rolled up.
+      const entry=await archiveManuscript(cloneModel(sourceModel),{paperId:sourcePaper,id:sourceModel.archiveId});
+      setManuscripts(current=>[entry,...current.filter(item=>item.id!==entry.id)]);
+      if (modelRef.current === sourceModel) {
+        if (sourceModel.archiveId !== entry.id) commitModel({ ...sourceModel, archiveId: entry.id });
+        setSavedManuscriptId(entry.id);
+      }
       setStatus("长卷已收好，可在文稿箱展开或续写");return;
     }
-    const duplicate = manuscripts.find(
-      (entry) =>
-        entry.paperId === paperId &&
-        JSON.stringify(entry.model) === JSON.stringify(snapshot),
+    const duplicate = manuscriptsRef.current.find(
+      (entry) => entry.contentHash === manuscriptHash(sourceModel, sourcePaper),
     );
     if (duplicate) {
       setSavedManuscriptId(duplicate.id);
@@ -719,29 +757,36 @@ export function App() {
       return;
     }
 
-    const savedAt = new Date().toISOString();
-    const entry = {
-      id: globalThis.crypto?.randomUUID?.() || `${Date.now()}`,
-      savedAt,
-      paperId,
-      model: snapshot,
-      excerpt: manuscriptExcerpt(snapshot),
-    };
-    const nextManuscripts = [entry, ...manuscripts];
-    localStorage.setItem(MANUSCRIPT_KEY, JSON.stringify(nextManuscripts.filter(item => !item.documentId)));
-    setManuscripts(nextManuscripts);
-    setSavedManuscriptId(entry.id);
+    const entry = await archiveManuscript(cloneModel(sourceModel), { paperId: sourcePaper });
+    setManuscripts((current) => [entry, ...current]);
+    if (modelRef.current === sourceModel) setSavedManuscriptId(entry.id);
     setStatus("稿纸已存入文稿箱");
     play("space");
   }
 
+  function storeManuscript() {
+    return saveToManuscriptBox().catch(() => setStatus("文稿箱暂时无法保存，请先导出稿件"));
+  }
+
   async function viewManuscript(entry) {
-    const loaded=entry.documentId?await readDocument(entry.documentId):entry.model;
+    const loaded=await readDocument(entry.documentId).catch(()=>null);
     if(!loaded){setStatus("这份稿件暂时无法读取");return;}
-    setManuscriptBoxOpen(false);setViewingManuscript({...entry,model:loaded});
+    setManuscriptBoxOpen(false);setConfirmingDelete(false);setViewingManuscript({...entry,model:loaded});
+  }
+
+  async function removeManuscript(entry) {
+    try { await deleteManuscript(entry.documentId); }
+    catch { setStatus("暂时无法删除这份稿件，请重试"); return; }
+    setManuscripts((current) => current.filter((item) => item.id !== entry.id));
+    if (savedManuscriptId === entry.id) setSavedManuscriptId("");
+    setConfirmingDelete(false);
+    setViewingManuscript(null);
+    setManuscriptBoxOpen(true);
+    setStatus("已从文稿箱删除");
   }
 
   function returnToManuscriptBox() {
+    setConfirmingDelete(false);
     setViewingManuscript(null);
     setManuscriptBoxOpen(true);
   }
@@ -813,22 +858,20 @@ export function App() {
 
   useEffect(() => {
     soundRef.current = soundOn;
-    localStorage.setItem(SOUND_KEY, soundOn ? "on" : "off");
+    writeStored(SOUND_KEY, soundOn ? "on" : "off");
   }, [soundOn]);
 
   useEffect(() => {
-    localStorage.setItem(PAPER_SELECTION_KEY, paperId);
-    if(!model.kind||model.kind==="sheet")localStorage.setItem("typer-sheet-paper-v1",paperId);
+    writeStored(PAPER_SELECTION_KEY, paperId);
+    if(!model.kind||model.kind==="sheet")writeStored(SHEET_PAPER_KEY,paperId);
   }, [paperId]);
 
   useEffect(()=>{
     let cancelled=false;
-    listDocuments().then(entries=>{
-      if(cancelled)return;
-      const saved=entries.filter(entry=>entry.archived&&entry.kind==="scroll").map(entry=>({id:entry.id,documentId:entry.id,kind:entry.kind,paperId:entry.paperId,savedAt:entry.updatedAt,lineCount:entry.lineCount,excerpt:entry.excerpt}));
-      setManuscripts(current=>[...saved,...current.filter(entry=>!saved.some(item=>item.id===entry.id))].sort((a,b)=>b.savedAt.localeCompare(a.savedAt)));
+    migrateLegacyManuscripts().catch(()=>0).then(listManuscripts).then(entries=>{
+      if(!cancelled)setManuscripts(current=>[...current.filter(entry=>!entries.some(item=>item.id===entry.id)),...entries].sort((a,b)=>b.savedAt.localeCompare(a.savedAt)));
     }).catch(()=>setStatus("本机稿件库暂时无法读取"));
-    if(localStorage.getItem("typer-writing-mode-v1")==="scroll")switchWritingMode("scroll");
+    if(readStored(WRITING_MODE_KEY)==="scroll")switchWritingMode("scroll");
     return()=>{cancelled=true;};
   },[]);
 
@@ -837,21 +880,17 @@ export function App() {
   },[postUser?.id]);
 
   useEffect(() => {
-    localStorage.setItem(MANUSCRIPT_KEY, JSON.stringify(manuscripts.filter(entry=>!entry.documentId)));
-  }, [manuscripts]);
-
-  useEffect(() => {
     // The desk experience was retired; old preferences must not restore it.
-    localStorage.removeItem("typer-view-mode-v1");
-    localStorage.removeItem("typer-desk-scene-v1");
+    removeStored("typer-view-mode-v1");
+    removeStored("typer-desk-scene-v1");
   }, []);
 
   useEffect(() => {
-    localStorage.setItem(MACHINE_VARIANT_KEY, variantId);
+    writeStored(MACHINE_VARIANT_KEY, variantId);
   }, [variantId]);
 
   useEffect(() => {
-    localStorage.setItem(MACHINE_MODEL_KEY, machineModelId);
+    writeStored(MACHINE_MODEL_KEY, machineModelId);
   }, [machineModelId]);
 
   useEffect(() => {
@@ -864,7 +903,6 @@ export function App() {
 
   useEffect(() => {
     audio().preload();
-    document.fonts?.load(`400 24px ${CHINESE_INK_FONT}`, "京华老宋体").catch(()=>{});
     const timer = window.setTimeout(focusWriter, 180);
     return () => window.clearTimeout(timer);
   }, []);
@@ -957,7 +995,7 @@ export function App() {
 
         <div className={`writer-status${focused ? " focused" : ""}`} role="status">
           <span className="status-lamp" />
-          {status}
+          {storageIssue || notice || status}
           {model.kind==="scroll"?` · 已写 ${rollLengthMetres(model).toFixed(2)} 米`:hasInk&&!model.pageFull?` · 第 ${model.activeLine+1} 行`:""}
         </div>
 
@@ -1152,15 +1190,15 @@ export function App() {
                       >
                         <span className="paper-grain" />
                         <span className="manuscript-card-copy">
-                          {entry.excerpt || manuscriptExcerpt(entry.model)}
+                          {entry.excerpt || "空白稿纸"}
                         </span>
                       </span>
                       <span className="manuscript-card-meta">
                         <span className="manuscript-card-title">
-                          {entry.kind==="scroll"?"长卷":entry.model?.paperFormat==="postcard"?"明信片":"稿纸"} · {manuscripts.length-index}
+                          {entry.kind==="scroll"?"长卷":entry.paperFormat==="postcard"?"明信片":"稿纸"} · {manuscripts.length-index}
                         </span>
                         <span className="manuscript-card-paper">
-                          {paper.name} · {entry.lineCount||entry.model.lines.length} 行
+                          {paper.name} · {entry.lineCount} 行
                         </span>
                         <time dateTime={entry.savedAt}>
                           {formatSavedAt(entry.savedAt)}
@@ -1198,7 +1236,7 @@ export function App() {
                 className="fresh-sheet-button"
                 type="button"
                 onClick={
-                  savedManuscriptId ? openManuscriptBox : saveToManuscriptBox
+                  savedManuscriptId ? openManuscriptBox : storeManuscript
                 }
               >
                 {savedManuscriptId ? "打开文稿箱" : "存入文稿箱"}
@@ -1260,6 +1298,13 @@ export function App() {
                 onClick={returnToManuscriptBox}
               >
                 返回文稿箱
+              </button>
+              <button
+                className={`fresh-sheet-button secondary${confirmingDelete ? " danger" : ""}`}
+                type="button"
+                onClick={() => confirmingDelete ? removeManuscript(viewingManuscript) : setConfirmingDelete(true)}
+              >
+                {confirmingDelete ? "确认删除，无法恢复" : "删除"}
               </button>
             </div>
           </div>

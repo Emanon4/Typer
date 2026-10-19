@@ -1,6 +1,17 @@
 const CJK_PATTERN = /[\u2E80-\u30FF\u3400-\u9FFF\uF900-\uFAFF\uFF01-\uFF60\uFFE0-\uFFEE\u{20000}-\u{2FA1F}]/u;
 export const CHINESE_INK_FONT = '"Typer KingHwa OldSong"';
 
+// The bundled face is ~36 MB and may not be subset under its licence. Fetch it
+// only once Chinese is about to reach the paper, not on every page visit.
+let inkFontRequested = false;
+export function ensureInkFont(text) {
+  if (inkFontRequested || !CJK_PATTERN.test(text) || !globalThis.document?.fonts) return;
+  inkFontRequested = true;
+  document.fonts.load(`400 24px ${CHINESE_INK_FONT}`, "京华老宋体").catch(() => {
+    inkFontRequested = false;
+  });
+}
+
 // Shared by live vector text and the full-resolution exported impression.
 export function inkTypography(glyph, width, height) {
   const cjk = CJK_PATTERN.test(glyph.character);

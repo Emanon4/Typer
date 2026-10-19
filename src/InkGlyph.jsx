@@ -1,6 +1,6 @@
 import { memo, useId, useMemo, useLayoutEffect, useRef } from "react";
 import { MAX_LINE_UNITS, GLYPH_START_PERCENT, GLYPH_RANGE_PERCENT, GLYPH_WIDTH_CQW, GLYPH_HEIGHT_CQW } from "./typewriterConfig";
-import { inkImpression } from "./inkTypography";
+import { ensureInkFont, inkImpression } from "./inkTypography";
 
 // Paint directly at export resolution, never by enlarging a screen-sized stamp.
 export function paintInkGlyph(canvas, glyph, options = {}) {
@@ -91,6 +91,8 @@ function RasterInkGlyph({glyph, layout}) {
   const ref=useRef(null);
   useLayoutEffect(() => {
     const canvas=ref.current;
+    // Canvas text does not request a web font by itself; a reloaded draft must.
+    ensureInkFont(glyph.character);
     return watchInk(canvas, () => {
       const {width,height}=canvas.getBoundingClientRect();
       if(width && height) paintInkGlyph(canvas,glyph,{cssWidth:width,cssHeight:height,ratio:window.devicePixelRatio||1});

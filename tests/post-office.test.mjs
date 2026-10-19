@@ -142,6 +142,8 @@ test("real accounts: authenticated, delayed, private, idempotent delivery surviv
       cookie: writer.cookie,
     });
     assert.equal(retry.body.letter.id, id);
+    assert.equal(sent.body.letter.stampId, "swallow");
+    assert.equal(retry.body.letter.stampId, "swallow");
     assert.equal(retry.body.user.quota.sent, 1);
     assert.equal(
       (
@@ -177,11 +179,11 @@ test("real accounts: authenticated, delayed, private, idempotent delivery surviv
       clock: () => now,
     });
     now += 86400000;
-    assert.equal(
-      (await request("/letters", { cookie: reader.cookie })).body.letters
-        .length,
-      1,
-    );
+    const inbox = (await request("/letters", { cookie: reader.cookie })).body
+      .letters;
+    assert.equal(inbox.length, 1);
+    assert.equal(inbox[0].stampId, "swallow", "listing keeps the stamp");
+    assert.equal(inbox[0].model, undefined, "listing omits the ink snapshot");
     const opened = await request(`/letters/${id}/open`, {
       method: "POST",
       body: {},
