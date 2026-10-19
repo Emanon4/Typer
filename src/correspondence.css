@@ -20,6 +20,10 @@
   border-color: #bca678;
   background: #3a3020;
 }
+.writing-modes button:disabled {
+  cursor: progress;
+  opacity: 0.6;
+}
 .writing-modes small {
   display: block;
   font-size: 10px;
