@@ -124,6 +124,7 @@ export function App() {
   const [paperCategory, setPaperCategory] = useState("sheet");
   const [albumOpen, setAlbumOpen] = useState(false);
   const [paperChanging, setPaperChanging] = useState(false);
+  const [swapping, setSwapping] = useState(false);
   const [shiftLatched, setShiftLatched] = useState(false);
   const [manuscriptBoxOpen, setManuscriptBoxOpen] = useState(false);
   const [manuscripts, setManuscripts] = useState([]);
@@ -212,10 +213,12 @@ export function App() {
   async function holdInput(task) {
     if (transitionRef.current) return;
     transitionRef.current = true;
+    setSwapping(true);
     try {
       return await task();
     } finally {
       transitionRef.current = false;
+      setSwapping(false);
     }
   }
 
@@ -654,6 +657,7 @@ export function App() {
   async function startLetter({documentId,recipient="",ownerId}) {
     if(!postUser||ownerId!==postUser.id)return;
     if(compositionRef.current)throw new Error("请等当前文字落纸后再取信笺");
+    if(transitionRef.current)throw new Error("正在换纸，请稍候再取信笺");
     await holdInput(async () => {
       await stopTyping();
       await savePendingRef.current;
@@ -1057,8 +1061,8 @@ export function App() {
                 <section className="workbench-section" aria-label="纸张形态">
                   <span className="workbench-label">写作</span>
                   <div className="writing-modes">
-                    <button aria-pressed={model.kind!=="scroll"&&model.kind!=="letter"} onClick={()=>switchWritingMode("sheet")}>散页稿纸<small>一张一张，留下一篇稿</small></button>
-                    <button aria-pressed={model.kind==="scroll"} onClick={()=>switchWritingMode("scroll")}>凯鲁亚克<small>装入长卷，一直写下去</small></button>
+                    <button aria-pressed={model.kind!=="scroll"&&model.kind!=="letter"} disabled={swapping} onClick={()=>switchWritingMode("sheet")}>散页稿纸<small>一张一张，留下一篇稿</small></button>
+                    <button aria-pressed={model.kind==="scroll"} disabled={swapping} onClick={()=>switchWritingMode("scroll")}>凯鲁亚克<small>装入长卷，一直写下去</small></button>
                   </div>
                 </section>
                 <section className="workbench-section" aria-label="机械特写机型与配色">
