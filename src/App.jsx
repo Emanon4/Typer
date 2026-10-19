@@ -158,8 +158,12 @@ export function App() {
   const idleWaitersRef = useRef([]);
   const transitionRef = useRef(false);
   const noticeTimerRef = useRef(0);
+  // Async saves read the latest render, not the one that started them.
   const manuscriptsRef = useRef(manuscripts);
   manuscriptsRef.current = manuscripts;
+  const savedManuscriptIdRef = useRef(savedManuscriptId);
+  savedManuscriptIdRef.current = savedManuscriptId;
+  const escapeRef = useRef(null);
   const paperRef = useRef(paperId);
   paperRef.current=paperId;
 
@@ -617,7 +621,7 @@ export function App() {
     const id=current.kind==="scroll"?current.id:readStored(ACTIVE_SCROLL_KEY);
     const roll=current.kind==="scroll"?current:id&&await readDocument(id);
     if(!roll)return;
-    const archived=current.kind==="scroll"&&savedManuscriptId;
+    const archived=current.kind==="scroll"&&savedManuscriptIdRef.current;
     if(!archived&&roll.lines.some(line=>line.glyphs.length)) {
       const entry=await archiveManuscript(cloneModel(roll),{paperId:current.kind==="scroll"?paperRef.current:roll.paperId,id:roll.archiveId});
       setManuscripts(list=>[entry,...list.filter(item=>item.id!==entry.id)]);
@@ -738,7 +742,7 @@ export function App() {
     const sourcePaper = paperRef.current;
     if(sourceModel.kind==="scroll") {
       await savePendingRef.current;
-      if(savedManuscriptId){setStatus("长卷已在文稿箱中");return;}
+      if(savedManuscriptIdRef.current){setStatus("长卷已在文稿箱中");return;}
       // One roll keeps one archive entry, refreshed each time it is rolled up.
       const entry=await archiveManuscript(cloneModel(sourceModel),{paperId:sourcePaper,id:sourceModel.archiveId});
       setManuscripts(current=>[entry,...current.filter(item=>item.id!==entry.id)]);
@@ -778,7 +782,7 @@ export function App() {
     try { await deleteManuscript(entry.documentId); }
     catch { setStatus("暂时无法删除这份稿件，请重试"); return; }
     setManuscripts((current) => current.filter((item) => item.id !== entry.id));
-    if (savedManuscriptId === entry.id) setSavedManuscriptId("");
+    if (savedManuscriptIdRef.current === entry.id) setSavedManuscriptId("");
     setConfirmingDelete(false);
     setViewingManuscript(null);
     setManuscriptBoxOpen(true);
@@ -913,6 +917,22 @@ export function App() {
     },
     [],
   );
+
+  // Esc closes the top-most drawer; the post office and album handle their own.
+  escapeRef.current = () => {
+    if (postOpen || albumOpen) return;
+    if (viewingManuscript) returnToManuscriptBox();
+    else if (manuscriptBoxOpen) closeManuscriptBox();
+    else if (paperBoxOpen) closePaperBox();
+    else if (workbenchOpen) setWorkbenchOpen(false);
+  };
+  useEffect(() => {
+    const handleEscape = (event) => {
+      if (event.key === "Escape" && !event.isComposing) escapeRef.current();
+    };
+    window.addEventListener("keydown", handleEscape);
+    return () => window.removeEventListener("keydown", handleEscape);
+  }, []);
 
   return (
     <main
@@ -1100,6 +1120,7 @@ export function App() {
                 className="paper-box-close"
                 type="button"
                 onClick={closePaperBox}
+                autoFocus
               >
                 收起
               </button>
@@ -1166,6 +1187,7 @@ export function App() {
                 className="paper-box-close"
                 type="button"
                 onClick={closeManuscriptBox}
+                autoFocus
               >
                 收起
               </button>
@@ -1296,6 +1318,7 @@ export function App() {
                 className="fresh-sheet-button secondary"
                 type="button"
                 onClick={returnToManuscriptBox}
+                autoFocus
               >
                 返回文稿箱
               </button>

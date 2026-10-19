@@ -27,7 +27,7 @@ npm ci
 npm run dev
 ```
 
-生产验证：
+生产验证（Sites 打包测试检查 `dist/`，所以先构建再运行测试）：
 
 ```bash
 npm run build
